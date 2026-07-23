@@ -1,0 +1,111 @@
+name: Publish to Chrome Web Store
+
+# Triggers:
+# • on every tag matching v*  (e.g. `git tag v1.0.1 && git push --tags`)
+# • or manually from the Actions tab
+#
+# Required repository secrets (Settings → Secrets and variables → Actions):
+#   CWS_EXTENSION_ID    – the extension ID assigned by the Chrome Web Store
+#                         (visible in the developer dashboard URL after first
+#                         manual upload).
+#   CWS_CLIENT_ID       – OAuth 2.0 client ID  (Google Cloud Console)
+#   CWS_CLIENT_SECRET   – OAuth 2.0 client secret
+#   CWS_REFRESH_TOKEN   – OAuth refresh token with the
+#                         `https://www.googleapis.com/auth/chromewebstore` scope
+#
+# How to get the OAuth tokens once:
+#   1. In Google Cloud Console enable the "Chrome Web Store API".
+#   2. Create OAuth 2.0 credentials (type: Desktop app).
+#   3. Run `npx chrome-webstore-upload-cli generate-refresh-token` and paste in
+#      the client ID + secret. Follow the consent flow; copy the refresh token
+#      that's printed.
+#   4. Add all three values plus the extension ID as repository secrets.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish (true) or upload as draft (false)"
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Build & upload
+    runs-on: ubuntu-latest
+    environment: chrome-web-store
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Verify version match (tag ↔ manifest.json)
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          MANIFEST_VERSION=$(node -p "require('./manifest.json').version")
+          echo "Tag version:      $TAG"
+          echo "Manifest version: $MANIFEST_VERSION"
+          if [ "$TAG" != "$MANIFEST_VERSION" ]; then
+            echo "::error::manifest.json version ($MANIFEST_VERSION) does not match git tag ($TAG)"
+            exit 1
+          fi
+
+      - name: Build
+        run: npm run rebuild
+
+      - name: Create extension zip
+        run: |
+          mkdir -p build
+          # Anything referenced by manifest.json must end up in the zip:
+          #   - manifest.json
+          #   - dist/** (compiled JS)
+          #   - src/styles/overlay.css (referenced by content_scripts.css)
+          #   - public/icons/icon.svg (referenced by icons + web_accessible_resources)
+          zip -r build/tv2-subtitle-studio.zip \
+              manifest.json \
+              dist \
+              src/styles \
+              public/icons/icon.svg
+          ls -lh build/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-zip
+          path: build/tv2-subtitle-studio.zip
+          retention-days: 30
+
+      - name: Upload to Chrome Web Store
+        env:
+          EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
+          CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+        run: |
+          # Decide whether to publish or just upload as draft.
+          # Tag pushes always publish. Manual runs honour the `publish` input.
+          PUBLISH_FLAG=""
+          if [ "${{ github.event_name }}" = "push" ] || [ "${{ inputs.publish }}" = "true" ]; then
+            PUBLISH_FLAG="--auto-publish"
+          fi
+          npx --yes chrome-webstore-upload-cli@3 upload \
+            --source build/tv2-subtitle-studio.zip \
+            --extension-id "$EXTENSION_ID" \
+            --client-id "$CLIENT_ID" \
+            --client-secret "$CLIENT_SECRET" \
+            --refresh-token "$REFRESH_TOKEN" \
+            $PUBLISH_FLAG
+

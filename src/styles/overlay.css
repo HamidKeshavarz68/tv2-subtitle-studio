@@ -1,0 +1,398 @@
+#tv2-sub-roller {
+  --nsr-cue-size: 13px;
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  width: 28vw;
+  height: 70vh;
+  min-width: 240px;
+  min-height: 140px;
+  max-width: 95vw;
+  max-height: 95vh;
+  background: rgba(20, 20, 24, 0.92);
+  color: #f5f5f7;
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  z-index: 2147483647;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  backdrop-filter: blur(6px);
+  container-type: inline-size;
+}
+
+/* Custom resize handles (4 edges + 4 corners) */
+#tv2-sub-roller .nsr-rh {
+  position: absolute;
+  z-index: 2;
+  touch-action: none;
+}
+#tv2-sub-roller .nsr-rh-n  { top: -3px;    left: 6px;   right: 6px;  height: 6px; cursor: ns-resize; }
+#tv2-sub-roller .nsr-rh-s  { bottom: -3px; left: 6px;   right: 6px;  height: 6px; cursor: ns-resize; }
+#tv2-sub-roller .nsr-rh-w  { left: -3px;   top: 6px;    bottom: 6px; width: 6px;  cursor: ew-resize; }
+#tv2-sub-roller .nsr-rh-e  { right: -3px;  top: 6px;    bottom: 6px; width: 6px;  cursor: ew-resize; }
+#tv2-sub-roller .nsr-rh-nw { top: -3px;    left: -3px;  width: 12px; height: 12px; cursor: nwse-resize; border-radius: 0 0 8px 0; }
+#tv2-sub-roller .nsr-rh-ne { top: -3px;    right: -3px; width: 12px; height: 12px; cursor: nesw-resize; border-radius: 0 0 0 8px; }
+#tv2-sub-roller .nsr-rh-sw { bottom: -3px; left: -3px;  width: 12px; height: 12px; cursor: nesw-resize; border-radius: 0 8px 0 0; }
+#tv2-sub-roller .nsr-rh-se { bottom: -3px; right: -3px; width: 12px; height: 12px; cursor: nwse-resize; border-radius: 8px 0 0 0; }
+
+#tv2-sub-roller .nsr-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.06);
+  cursor: move;
+  user-select: none;
+  flex-wrap: wrap;
+  min-width: 0;
+  touch-action: none;
+}
+
+/* Coarse pointers (touch) need larger hit targets to grab the edges. */
+@media (pointer: coarse) {
+  #tv2-sub-roller .nsr-rh-n  { top: -6px;    height: 14px; }
+  #tv2-sub-roller .nsr-rh-s  { bottom: -6px; height: 14px; }
+  #tv2-sub-roller .nsr-rh-w  { left: -6px;   width: 14px;  }
+  #tv2-sub-roller .nsr-rh-e  { right: -6px;  width: 14px;  }
+  #tv2-sub-roller .nsr-rh-nw { top: -6px;    left: -6px;   width: 22px; height: 22px; }
+  #tv2-sub-roller .nsr-rh-ne { top: -6px;    right: -6px;  width: 22px; height: 22px; }
+  #tv2-sub-roller .nsr-rh-sw { bottom: -6px; left: -6px;   width: 22px; height: 22px; }
+  #tv2-sub-roller .nsr-rh-se { bottom: -6px; right: -6px;  width: 22px; height: 22px; }
+}
+#tv2-sub-roller .nsr-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: nowrap;       /* keep grouped controls together */
+  flex-shrink: 0;
+}
+#tv2-sub-roller .nsr-group[hidden] { display: none; }
+/* Collapsed (Hide clicked): show only the logo, name and the Show button. */
+#tv2-sub-roller.nsr-collapsed .nsr-actions,
+#tv2-sub-roller.nsr-collapsed .nsr-status { display: none; }
+#tv2-sub-roller.nsr-collapsed .nsr-group-toggle { margin-left: auto; }
+
+/* Action toolbar: sits inline at wide widths, drops to its own full-width row
+   at narrow widths (see container query below) so every control stays visible. */
+#tv2-sub-roller .nsr-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+#tv2-sub-roller .nsr-title { font-weight: 600; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; flex: 0 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#tv2-sub-roller .nsr-icon {
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+  vertical-align: middle;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+#tv2-sub-roller .nsr-status {
+  flex: 1 1 auto;
+  font-size: 10px;
+  opacity: 0.7;
+  text-align: right;
+  margin-right: 2px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Narrow panel: move the Translation/Settings toolbar onto a second
+   full-width row (buttons sharing the width equally) while the Hide button stays
+   up on the first row beside the title and status. */
+@container (max-width: 380px) {
+  #tv2-sub-roller .nsr-actions {
+    flex: 1 0 100%;
+    order: 2;
+    margin-top: 4px;
+  }
+  #tv2-sub-roller .nsr-group-toggle { order: 1; }
+  #tv2-sub-roller .nsr-actions .nsr-group { flex: 1 1 0; }
+  #tv2-sub-roller .nsr-actions .nsr-btn-text { width: 100%; }
+}
+#tv2-sub-roller .nsr-btn {
+  background: transparent;
+  color: #f5f5f7;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  min-width: 24px;
+  height: 24px;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Disable the ~300ms double-tap-to-zoom delay on touch (Android extension
+     browsers); without it, rapid repeated taps on steppers like A-/A+ get
+     swallowed as a zoom gesture and appear to do nothing. */
+  touch-action: manipulation;
+}
+#tv2-sub-roller .nsr-btn:hover { background: rgba(255, 255, 255, 0.12); }
+#tv2-sub-roller .nsr-btn-busy {
+  opacity: 0.55;
+  cursor: progress;
+  pointer-events: none;
+}
+#tv2-sub-roller .nsr-btn-text {
+  min-width: 44px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+#tv2-sub-roller .nsr-sel {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f5f5f7;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  height: 24px;
+  padding: 0 4px;
+  font-size: 11px;
+  cursor: pointer;
+  max-width: 110px;
+  touch-action: manipulation;
+}
+#tv2-sub-roller .nsr-sel option {
+  background: #1d1d22;
+  color: #f5f5f7;
+}
+
+#tv2-sub-roller .nsr-btn-active {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+#tv2-sub-roller .nsr-settings,
+#tv2-sub-roller .nsr-translate-panel {
+  position: absolute;
+  top: 40px;
+  right: 8px;
+  z-index: 3;
+  min-width: 200px;
+  padding: 10px 12px;
+  background: #1d1d22;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+#tv2-sub-roller .nsr-settings[hidden],
+#tv2-sub-roller .nsr-translate-panel[hidden] { display: none; }
+#tv2-sub-roller .nsr-translate-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+#tv2-sub-roller .nsr-settings-title {
+  font-weight: 600;
+  font-size: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+#tv2-sub-roller .nsr-settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+#tv2-sub-roller .nsr-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+#tv2-sub-roller .nsr-toggle {
+  box-sizing: border-box;
+  width: 38px;
+  height: 22px;
+  background: #222;
+  border: 1.5px solid #444;
+  border-radius: 12px;
+  position: relative;
+  cursor: pointer;
+  outline: none;
+  transition: background 0.2s, border 0.2s;
+  margin-right: 2px;
+  flex-shrink: 0;
+}
+#tv2-sub-roller .nsr-toggle[aria-checked="true"] {
+  background: #6cb4ff;
+  border-color: #6cb4ff;
+}
+#tv2-sub-roller .nsr-toggle-slider {
+  box-sizing: border-box;
+  position: absolute;
+  top: 50%;
+  left: 1px;
+  width: 16px;
+  height: 16px;
+  transform: translateY(-50%);
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+  transition: left 0.2s;
+}
+#tv2-sub-roller .nsr-toggle[aria-checked="true"] .nsr-toggle-slider {
+  left: 18px;
+}
+
+#tv2-sub-roller .nsr-settings-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+#tv2-sub-roller .nsr-settings-title {
+  font-weight: bold;
+  font-size: 1.1em;
+}
+#tv2-sub-roller .nsr-settings-close,
+#tv2-sub-roller .nsr-translate-close {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.3em;
+  cursor: pointer;
+  padding: 0 6px;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+#tv2-sub-roller .nsr-settings-close:hover,
+#tv2-sub-roller .nsr-settings-close:focus,
+#tv2-sub-roller .nsr-translate-close:hover,
+#tv2-sub-roller .nsr-translate-close:focus {
+  background: rgba(255,255,255,0.12);
+}
+#tv2-sub-roller .nsr-settings-foot {
+  margin-top: 2px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+}
+#tv2-sub-roller .nsr-settings-feedback { opacity: 0.8; }
+#tv2-sub-roller .nsr-settings-links {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+#tv2-sub-roller .nsr-link {
+  color: #6cb4ff;
+  text-decoration: none;
+}
+#tv2-sub-roller .nsr-link:hover { text-decoration: underline; }
+#tv2-sub-roller .nsr-dot { opacity: 0.5; }
+#tv2-sub-roller .nsr-settings-version {
+  opacity: 0.55;
+  font-size: 10px;
+  text-align: right;
+}
+
+#tv2-sub-roller .nsr-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+#tv2-sub-roller .nsr-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 6px 4px;
+}
+#tv2-sub-roller .nsr-empty {
+  padding: 16px;
+  font-size: 12px;
+  opacity: 0.75;
+  line-height: 1.4;
+}
+
+#tv2-sub-roller .nsr-cue {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.35s ease, opacity 0.35s ease, border-color 0.35s ease, padding-left 0.35s ease, font-weight 0.35s ease, color 0.35s ease;
+  line-height: 1.35;
+  font-size: var(--nsr-cue-size);
+}
+#tv2-sub-roller .nsr-cue:hover { background: rgba(255, 255, 255, 0.08); }
+
+#tv2-sub-roller .nsr-t {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  opacity: 0.55;
+  padding-top: 1px;
+  min-width: 42px;
+}
+#tv2-sub-roller .nsr-x {
+  flex: 1;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+#tv2-sub-roller .nsr-orig,
+#tv2-sub-roller .nsr-trans {
+  display: block;
+}
+#tv2-sub-roller .nsr-trans {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.88em;
+  color: #9ec9ff;
+  opacity: 0.85;
+  font-style: italic;
+  font-weight: 400;
+}
+#tv2-sub-roller .nsr-active .nsr-trans {
+  opacity: 1;
+}
+#tv2-sub-roller .nsr-pending {
+  opacity: 0.5;
+  letter-spacing: 2px;
+}
+#tv2-sub-roller .nsr-warn {
+  color: #ff9d3a;
+}
+
+#tv2-sub-roller .nsr-past   { opacity: 0.4; }
+#tv2-sub-roller .nsr-future { opacity: 0.85; }
+#tv2-sub-roller .nsr-active {
+  background: rgba(255, 200, 0, 0.08);
+  border-left: 3px solid rgba(255, 179, 0, 0.7);
+  padding-left: 5px;
+  font-weight: 600;
+  opacity: 1;
+}
+#tv2-sub-roller .nsr-cue:not(.nsr-active) {
+  border-left: 3px solid transparent;
+  padding-left: 5px;
+}
+
+#tv2-sub-roller .nsr-foot {
+  padding: 6px 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 11px;
+  opacity: 0.6;
+}
+#tv2-sub-roller .nsr-foot[hidden] { display: none; }
+
