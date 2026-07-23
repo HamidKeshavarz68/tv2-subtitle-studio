@@ -17,6 +17,7 @@ const zipPath = resolve(buildDir, "tv2-subtitle-studio.zip");
 
 const filesToInclude = [
   "manifest.json",
+  "dist/content/net-hook.js",
   "dist/content/index.js",
   "dist/background/index.js",
   "src/styles/overlay.css",

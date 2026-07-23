@@ -29,6 +29,7 @@ const crxPath = resolve(buildDir, "tv2-subtitle-studio.crx");
 // crx3 will then zip up everything inside staging/ as the extension package.
 const filesToInclude = [
   "manifest.json",
+  "dist/content/net-hook.js",
   "dist/content/index.js",
   "dist/background/index.js",
   "src/styles/overlay.css",
