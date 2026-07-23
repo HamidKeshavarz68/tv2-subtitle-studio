@@ -16,29 +16,8 @@ type TranslateRequest = {
   target?: unknown;
 };
 
-type Tv2FetchRequest = {
-  type: "tv2-fetch";
-  url?: unknown;
-};
-
 function isTranslateRequest(msg: unknown): msg is TranslateRequest {
   return !!msg && typeof msg === "object" && (msg as { type?: unknown }).type === "translate";
-}
-
-function isTv2FetchRequest(msg: unknown): msg is Tv2FetchRequest {
-  return !!msg && typeof msg === "object" && (msg as { type?: unknown }).type === "tv2-fetch";
-}
-
-/** Only TV2-owned hosts may be proxied, to keep this a narrow, safe helper. */
-function isAllowedTv2Url(raw: string): boolean {
-  try {
-    const u = new URL(raw);
-    if (u.protocol !== "https:") return false;
-    const host = u.hostname.toLowerCase();
-    return host === "tv2.no" || host.endsWith(".tv2.no");
-  } catch {
-    return false;
-  }
 }
 
 function buildTranslateUrl(source: string, target: string, text: string): string {
@@ -62,24 +41,6 @@ function extractTranslatedText(data: unknown): string {
 }
 
 chrome.runtime.onMessage.addListener((msg: unknown, _sender: unknown, sendResponse: (resp: any) => void) => {
-  if (isTv2FetchRequest(msg)) {
-    (async () => {
-      try {
-        const url = String(msg.url ?? "");
-        if (!isAllowedTv2Url(url)) {
-          sendResponse({ ok: false, error: "url not allowed" });
-          return;
-        }
-        const res = await fetch(url, { method: "GET", credentials: "omit" });
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        sendResponse({ ok: true, text: await res.text() });
-      } catch (e: unknown) {
-        sendResponse({ ok: false, error: e instanceof Error ? e.message : String(e) });
-      }
-    })();
-    return true;
-  }
-
   if (!isTranslateRequest(msg)) return;
 
   (async () => {

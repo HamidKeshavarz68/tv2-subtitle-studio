@@ -30,7 +30,6 @@
   ],
   "host_permissions": [
     "https://play.tv2.no/*",
-    "https://*.tv2.no/*",
     "https://translate.googleapis.com/*"
   ],
   "web_accessible_resources": [
