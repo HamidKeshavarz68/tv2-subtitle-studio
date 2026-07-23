@@ -30,7 +30,6 @@ import { invalidateRender, render, updateStatus } from "./renderer";
 import { onTranslationConfigChanged } from "./translator";
 import { applyNativeSubtitleVisibility } from "./native-subtitles";
 import { getUiLang, onUiLangChange, setUiLang, t } from "./i18n";
-import { downloadSrt, hasSubtitles } from "./download";
 
 declare const chrome: any;
 
@@ -62,9 +61,6 @@ overlay.innerHTML = `
     <span class="nsr-actions">
       <span class="nsr-group nsr-group-translate">
         <button class="nsr-btn nsr-btn-text" data-act="translate-menu" title="Translation" aria-label="Translation">Translation</button>
-      </span>
-      <span class="nsr-group nsr-group-download" hidden>
-        <button class="nsr-btn nsr-btn-text" data-act="download" title="Download subtitles (.srt)" aria-label="Download subtitles">Download subtitle</button>
       </span>
       <span class="nsr-group nsr-group-settings">
         <button class="nsr-btn nsr-btn-text" data-act="settings" title="Settings" aria-label="Settings">Settings</button>
@@ -135,7 +131,7 @@ overlay.innerHTML = `
   <div class="nsr-body">
     <div class="nsr-list"></div>
     <div class="nsr-foot">
-      <small>Tip: enable subtitles in the TV 2 Play player so they get downloaded.</small>
+      <small>Tip: enable subtitles in the TV 2 Play player so they appear here.</small>
     </div>
   </div>
   <div class="nsr-rh nsr-rh-n"  data-dir="n"></div>
@@ -422,43 +418,13 @@ uiLangSel.addEventListener("change", () => {
   setUiLang(uiLangSel.value as UiLang);
 });
 
-// ---------- Download subtitles (.srt) ----------
-// The button appears once subtitles are available. Clicking builds the full
-// programme subtitles from the accumulated cues (translating them when
-// translation is enabled) and saves a .srt file; a busy state covers the async
-// fetch/translate work.
-const downloadGroup = overlay.querySelector(".nsr-group-download") as HTMLSpanElement;
-const downloadBtn = overlay.querySelector('button[data-act="download"]') as HTMLButtonElement;
-export function syncDownloadButton(): void {
-  const available = hasSubtitles();
-  downloadGroup.hidden = !available;
-  // The tip only helps users who have not captured any subtitles yet; once
-  // subtitles are available (i.e. enabled in the TV 2 Play player) it's redundant.
-  footEl.hidden = available;
+// ---------- Footer tip ----------
+// The "enable subtitles in the player" tip is only useful until subtitles have
+// actually been captured; hide it once cues exist.
+export function syncFooterTip(): void {
+  footEl.hidden = state.cues.length > 0;
 }
-syncDownloadButton();
-window.addEventListener("nsr-subtitles-updated", syncDownloadButton);
-
-let downloadBusy = false;
-async function handleDownload(): Promise<void> {
-  if (downloadBusy) return;
-  downloadBusy = true;
-  downloadBtn.disabled = true;
-  downloadBtn.classList.add("nsr-btn-busy");
-  downloadBtn.setAttribute("aria-busy", "true");
-  downloadBtn.textContent = t("download_busy");
-  try {
-    await downloadSrt();
-  } catch (e) {
-    console.warn("[nsr] subtitle download failed", e);
-  } finally {
-    downloadBusy = false;
-    downloadBtn.disabled = false;
-    downloadBtn.classList.remove("nsr-btn-busy");
-    downloadBtn.removeAttribute("aria-busy");
-    downloadBtn.textContent = t("download");
-  }
-}
+syncFooterTip();
 
 // ---------- i18n: (re)apply all static UI strings ----------
 function applyI18n(): void {
@@ -478,9 +444,6 @@ function applyI18n(): void {
   translateBtn.title = t("translate_open");
   translateBtn.setAttribute("aria-label", t("translate_open"));
   translateBtn.textContent = t("translate_open");
-  downloadBtn.title = t("download_title");
-  downloadBtn.setAttribute("aria-label", t("download_title"));
-  downloadBtn.textContent = t("download");
 
   // Collapse/expand button reflects current state.
   toggleBtn.textContent = ui.isExpanded ? t("hide") : t("show");
@@ -544,10 +507,6 @@ overlay.addEventListener("click", (e) => {
   switch (target.dataset.act) {
     case "toggle":
       toggleExpanded(target);
-      break;
-    case "download":
-      e.stopPropagation();
-      void handleDownload();
       break;
   }
 });

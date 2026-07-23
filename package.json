@@ -2,7 +2,7 @@
   "name": "tv2-subtitle-studio",
   "version": "0.1.0",
   "private": true,
-  "description": "Chrome extension that loads every TV 2 Play subtitle into a scrolling, time-synced overlay you can click to seek, translate with Google Translate, and download as an .srt file. Great for learning Norwegian.",
+  "description": "Chrome extension that loads every TV 2 Play subtitle into a scrolling, time-synced overlay you can click to seek and translate with Google Translate. Great for learning Norwegian.",
   "license": "MIT",
   "scripts": {
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",

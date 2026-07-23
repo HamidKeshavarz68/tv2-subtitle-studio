@@ -23,9 +23,6 @@ Initial release of **TV2 Subtitle Studio**, a Chrome (MV3) extension for
 - **Coalesced batch translator** — visible-window cues are sent in one request
   per batch instead of one per cue — plus a per-pair LRU cache so seeks and
   re-watches don't re-translate.
-- **Download subtitles** as an `.srt` (SubRip) file. Whole-video manifest fetch
-  is not wired up for TV 2 Play yet, so the export uses the cues accumulated from
-  the player during playback (translated / bilingual when translation is enabled).
 - **Playback-speed selector**, **font-size buttons** (A− / A+, 10–32 px),
   **resize from any edge or corner** with persisted size, **drag-to-move**, and
   **Hide / Show** to collapse to just the toolbar.

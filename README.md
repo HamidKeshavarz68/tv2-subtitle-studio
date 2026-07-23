@@ -16,9 +16,7 @@ panel that:
 - adjusts **font size** (A− / A+),
 - can be **resized from any edge or corner** and dragged anywhere on screen,
 - hides TV 2 Play's native on-video subtitle while the panel is open, and restores
-  it the moment you collapse the panel,
-- lets you **download** the captured subtitles as an `.srt` file (optionally
-  translated).
+  it the moment you collapse the panel.
 
 ## Table of contents
 
@@ -72,7 +70,6 @@ Then:
 | **Mode** | `Original` / `Translated` / `Bilingual`. Bilingual shows the original above and a smaller, blue, italic translation below. Hidden when language is off. |
 | **Speed** | Sets `video.playbackRate` and re-asserts it if the player tries to reset. |
 | **A− / A+** | Cue font size (10 px – 32 px, persisted). |
-| **Download** | Saves the captured cues as an `.srt` file (translated / bilingual when translation is enabled). |
 | **⚙ Settings** | Opens a dropdown to change menu language, playback speed and font size. |
 | **Hide / Show** | Collapses the window to just the toolbar, or restores its previous size. |
 
@@ -204,16 +201,6 @@ active line auto-scrolls to the centre.
   repeats and seeks don't re-translate.
 - Falls back to per-cue requests if the separator gets mangled.
 
-### Downloading subtitles (.srt)
-
-Whole-video subtitle fetch from a public manifest is **not wired up for TV 2 Play
-yet** (there is no reliable public endpoint equivalent to what other broadcasters
-expose). Instead, the **Download** button exports the cues that have been
-**accumulated from the player during playback**: as you watch, every cue the
-player streams is collected, and the download serialises those into an `.srt`
-(translated / bilingual when translation is enabled). To capture the whole
-programme, let it play through — or scrub across it — before downloading.
-
 ### Resizing & dragging
 
 Eight invisible handles (4 edges + 4 corners) translate mouse drags into
@@ -256,8 +243,6 @@ tv2-subtitle-studio/
     │   ├── state.ts           Shared state + persisted settings
     │   ├── translator.ts      Google Translate proxy + coalesced batch engine
     │   ├── native-subtitles.ts Hide/restore the player's native captions
-    │   ├── remote-subtitles.ts WebVTT parse helpers + (stubbed) full-file fetch
-    │   ├── download.ts        Accumulate cues + export as .srt
     │   ├── renderer.ts        Status line + rolling-window render
     │   ├── overlay.ts         Overlay DOM, toolbar, settings menu, drag/resize, click-to-seek
     │   ├── i18n.ts            Menu i18n (en/no) for the toolbar + settings UI
@@ -273,10 +258,6 @@ Built with `npm run build` → `dist/content/index.js` and
 
 - **Subtitles must be enabled in the player**: turn subtitles on in the
   TV 2 Play player at least once per video so cues start streaming.
-- **Whole-video download relies on accumulated cues**: the player only streams
-  subtitle segments as they play, and there is no manifest fetch for TV 2 yet, so
-  a download only contains the cues seen so far. Play (or scrub) through the video
-  to capture everything.
 - **Live streams** that ship only in-band 608/708 captions don't expose
   cues via `TextTrack.cues` and won't roll.
 - The Google Translate `gtx` endpoint is **unofficial**. If you start
@@ -289,8 +270,6 @@ Built with `npm run build` → `dist/content/index.js` and
 
 ## Roadmap
 
-- Wire up a whole-video subtitle source for TV 2 Play so downloads cover the
-  full programme without watching it through.
 - Optional cloud providers with API keys (DeepL, Google Cloud Translation
   v3) for higher quality / quota guarantees.
 - Persistent translation cache per-program in `chrome.storage.local`.

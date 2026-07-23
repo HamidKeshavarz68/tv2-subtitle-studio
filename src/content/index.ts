@@ -22,7 +22,6 @@ import { overlay, syncFullscreenParent } from "./overlay";
 import { applyNativeSubtitleVisibility, clearNativeSubtitleHiding } from "./native-subtitles";
 import { stopTranslations } from "./translator";
 import { attachToVideo, detachVideo, findVideo, scanTextTracks } from "./video";
-import { resetAccumulatedCues } from "./download";
 
 if (!(window as any).__tv2SubtitleStudioLoaded) {
   (window as any).__tv2SubtitleStudioLoaded = true;
@@ -51,10 +50,10 @@ function bootstrap(): void {
       overlay.parentElement?.removeChild(overlay);
       stopTranslations();
       detachVideo();
-      resetAccumulatedCues();
       state.video = null;
       state.track = null;
       state.cues = [];
+      state.activeCue = null;
       mounted = false;
     }
   }

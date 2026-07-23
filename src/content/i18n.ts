@@ -34,9 +34,6 @@ export type MessageKey =
   | "setting_display_mode"
   | "settings_open"
   | "settings_heading"
-  | "download"
-  | "download_busy"
-  | "download_title"
   | "setting_playback_speed"
   | "setting_font_size"
   | "setting_ui_language"
@@ -61,7 +58,7 @@ const MESSAGES: Record<UiLang, Messages> = {
     show: "Show",
     hide_title: "Hide subtitle list",
     show_title: "Show subtitle list",
-    tip: "Tip: enable subtitles in the TV 2 Play player so they get downloaded.",
+    tip: "Tip: enable subtitles in the TV 2 Play player so they appear here.",
     empty:
       "Waiting for subtitles…<br/>Open the TV 2 Play player's CC/subtitle menu and " +
       "select a language — every cue will then be loaded and rolled here.",
@@ -73,9 +70,6 @@ const MESSAGES: Record<UiLang, Messages> = {
     setting_display_mode: "Display mode",
     settings_open: "Settings",
     settings_heading: "Settings",
-    download: "Download subtitle",
-    download_busy: "Downloading…",
-    download_title: "Download subtitles (.srt)",
     setting_playback_speed: "Playback speed",
     setting_font_size: "Text size",
     setting_ui_language: "Menu language",
@@ -97,7 +91,7 @@ const MESSAGES: Record<UiLang, Messages> = {
     show: "Vis",
     hide_title: "Skjul undertekstliste",
     show_title: "Vis undertekstliste",
-    tip: "Tips: slå på undertekster i TV 2 Play-spilleren slik at de lastes ned.",
+    tip: "Tips: slå på undertekster i TV 2 Play-spilleren slik at de vises her.",
     empty:
       "Venter på undertekster…<br/>Åpne TV 2 Play-spillerens undertekstmeny og velg " +
       "et språk — hver linje lastes da inn og rulles her.",
@@ -109,9 +103,6 @@ const MESSAGES: Record<UiLang, Messages> = {
     setting_display_mode: "Visningsmodus",
     settings_open: "Innstillinger",
     settings_heading: "Innstillinger",
-    download: "Last ned undertekst",
-    download_busy: "Laster ned…",
-    download_title: "Last ned undertekster (.srt)",
     setting_playback_speed: "Avspillingshastighet",
     setting_font_size: "Tekststørrelse",
     setting_ui_language: "Menyspråk",

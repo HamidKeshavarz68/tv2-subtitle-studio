@@ -105,7 +105,7 @@
   text-overflow: ellipsis;
 }
 
-/* Narrow panel: move the Translation/Download/Settings toolbar onto a second
+/* Narrow panel: move the Translation/Settings toolbar onto a second
    full-width row (buttons sharing the width equally) while the Hide button stays
    up on the first row beside the title and status. */
 @container (max-width: 380px) {

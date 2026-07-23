@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "TV2 Subtitle Studio",
   "version": "0.1.0",
-  "description": "Loads every TV 2 Play subtitle into a scrolling, time-synced overlay you can click to seek, translate, and download as .srt.",
+  "description": "Loads every TV 2 Play subtitle into a scrolling, time-synced overlay you can click to seek and translate.",
   "icons": {
     "16": "public/icons/icon-16.png",
     "32": "public/icons/icon-32.png",
@@ -13,6 +13,13 @@
     "service_worker": "dist/background/index.js"
   },
   "content_scripts": [
+    {
+      "matches": ["https://play.tv2.no/*"],
+      "js": ["dist/content/net-hook.js"],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": true
+    },
     {
       "matches": ["https://play.tv2.no/*"],
       "js": ["dist/content/index.js"],

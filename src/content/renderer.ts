@@ -11,8 +11,7 @@
 import { ROLL } from "./config";
 import { detectSourceLang, isTranslationActive, settings, state } from "./state";
 import { cueText, escapeHtml, formatTime } from "./utils";
-import { listEl, statusEl } from "./overlay";
-import { hideNativeDomSubtitles } from "./native-subtitles";
+import { listEl, statusEl, syncFooterTip } from "./overlay";
 import { enqueueTranslate, getTranslation } from "./translator";
 import { t } from "./i18n";
 
@@ -75,17 +74,15 @@ function cueInnerHtml(idx: number, original: string): string {
 }
 
 export function render(): void {
+  syncFooterTip();
   if (!state.cues.length) {
     listEl.innerHTML = `<div class="nsr-empty">${t("empty")}</div>`;
     return;
   }
 
   const now = state.video?.currentTime ?? 0;
-  const active = findActiveIndex(now);
-
-  // Hide the player's DOM-rendered subtitle for the active cue. Must run every render,
-  // not gated by the window-change cache below.
-  hideNativeDomSubtitles(active >= 0 ? (state.cues[active] as VTTCue) : null, now);
+  const anchored = state.activeCue ? state.cues.indexOf(state.activeCue) : -1;
+  const active = anchored >= 0 ? anchored : findActiveIndex(now);
 
   const anchor = active >= 0 ? active : Math.max(0, active + 1);
   const start = Math.max(0, anchor - ROLL.past);
@@ -109,7 +106,9 @@ export function render(): void {
     // A cue is "past" only once the NEXT cue has started (or, for the last cue,
     // once its own endTime has passed) — keeps the active line lit through gaps.
     const next = state.cues[i + 1] as VTTCue | undefined;
-    const isPast = next ? next.startTime <= now : c.endTime < now;
+    const isPast = anchored >= 0
+      ? i < active
+      : next ? next.startTime <= now : c.endTime < now;
     const cls =
       i === active ? "nsr-cue nsr-active" :
       isPast ? "nsr-cue nsr-past" :

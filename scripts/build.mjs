@@ -15,6 +15,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const options = {
   entryPoints: {
     "content/index": resolve(root, "src/content/index.ts"),
+    "content/net-hook": resolve(root, "src/content/net-hook.ts"),
     "background/index": resolve(root, "src/background/index.ts"),
   },
   outdir: resolve(root, "dist"),

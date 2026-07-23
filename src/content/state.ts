@@ -13,12 +13,15 @@ export interface AppState {
   video: HTMLVideoElement | null;
   track: TextTrack | null;
   cues: TextTrackCue[];
+  /** TTML cue confirmed by the caption currently rendered by TV 2 Play. */
+  activeCue: TextTrackCue | null;
 }
 
 export const state: AppState = {
   video: null,
   track: null,
   cues: [],
+  activeCue: null,
 };
 
 /** Transient UI flags (not persisted). */

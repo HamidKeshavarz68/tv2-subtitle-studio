@@ -11,7 +11,10 @@ import { applyPlaybackRate, settings, state } from "./state";
 import { isSubtitleTrack } from "./utils";
 import { render, setStatus, updateStatus, invalidateRender } from "./renderer";
 import { onTranslationConfigChanged, stopTranslations } from "./translator";
-import { accumulateCues, hasSubtitles, resetAccumulatedCues } from "./download";
+import { startDomSubtitleCapture, stopDomSubtitleCapture, isDomCaptureActive } from "./dom-subtitles";
+import { startTtmlCapture, stopTtmlCapture } from "./ttml-subtitles";
+import { resetSubtitleStore } from "./subtitle-store";
+import { applyNativeSubtitleVisibility } from "./native-subtitles";
 
 /** Marker so each track is hooked for cue updates only once. */
 const HOOKED = "__nsrHooked";
@@ -37,12 +40,44 @@ let lastCueSig = "";
 let lastFirstStart = -1;
 
 export function findVideo(): HTMLVideoElement | null {
-  // TV 2 Play uses a single <video> in their player.
-  const list = document.querySelectorAll("video");
-  for (const v of Array.from(list)) {
-    if (v.duration > 0 || v.readyState > 0 || v.src || v.currentSrc) return v;
+  const list = Array.from(document.querySelectorAll("video"));
+  if (!list.length) return null;
+
+  let best: HTMLVideoElement | null = null;
+  let bestScore = -Infinity;
+
+  for (const v of list) {
+    const hasSource = v.duration > 0 || v.readyState > 0 || !!v.src || !!v.currentSrc;
+    if (!hasSource) continue;
+
+    const rect = v.getBoundingClientRect();
+    const cs = getComputedStyle(v);
+    const visible =
+      rect.width >= 160 &&
+      rect.height >= 90 &&
+      cs.display !== "none" &&
+      cs.visibility !== "hidden" &&
+      Number(cs.opacity || "1") > 0.05 &&
+      rect.bottom > 0 &&
+      rect.right > 0 &&
+      rect.top < window.innerHeight &&
+      rect.left < window.innerWidth;
+    const playing = !v.paused && !v.ended && v.readyState >= 2;
+    const area = Math.max(0, rect.width) * Math.max(0, rect.height);
+    const score =
+      (visible ? 1_000_000_000 : 0) +
+      (playing ? 100_000_000 : 0) +
+      area +
+      v.readyState * 1_000 +
+      (Number.isFinite(v.duration) ? 10 : 0);
+
+    if (score > bestScore) {
+      bestScore = score;
+      best = v;
+    }
   }
-  return list[0] ?? null;
+
+  return best ?? list[0] ?? null;
 }
 
 export function attachToVideo(video: HTMLVideoElement): void {
@@ -51,10 +86,11 @@ export function attachToVideo(video: HTMLVideoElement): void {
 
   state.video = video;
   state.cues = [];
+  state.activeCue = null;
   state.track = null;
   lastCueSig = "";
   lastFirstStart = -1;
-  resetAccumulatedCues();
+  resetSubtitleStore();
   setStatus("video found");
 
   const refresh = () => scanTextTracks(video);
@@ -100,10 +136,27 @@ export function attachToVideo(video: HTMLVideoElement): void {
 
   applyPlaybackRate();
   refresh();
+
+  // TV 2 Play (RxPlayer) never exposes native TextTracks. Its subtitles are
+  // captured two ways, both feeding the shared cue store:
+  //   1. TTML segments the player downloads (accurate + buffered ahead, so the
+  //      overlay can show upcoming lines) — the primary source.
+  //   2. Scraping the on-screen caption node — a fallback that only sees the
+  //      current line, used if the network hook can't observe the segments.
+  startTtmlCapture();
+  startDomSubtitleCapture(video);
+
+  // Inject the native-caption hide stylesheet now that a video is attached. The
+  // video often attaches AFTER the initial mount (via the periodic tick / mutation
+  // observer), and those paths don't re-run mountIfNeeded's call, so do it here to
+  // guarantee the player's own subtitles are suppressed on every attach.
+  applyNativeSubtitleVisibility();
 }
 
 /** Remove listeners from the currently attached video, if any. */
 export function detachVideo(): void {
+  stopDomSubtitleCapture();
+  stopTtmlCapture();
   if (detach) {
     detach();
     detach = null;
@@ -147,7 +200,11 @@ export function scanTextTracks(video: HTMLVideoElement): void {
 
   if (bestTrack && bestCount > 0) {
     snapshotCues(bestTrack);
-  } else if (!anyEnabled && (state.track || state.cues.length || hasSubtitles())) {
+  } else if (isDomCaptureActive()) {
+    // No native subtitle track, but the DOM scraper owns the cue state (TV 2
+    // Play / RxPlayer). Leave its captured cues untouched.
+    return;
+  } else if (!anyEnabled && (state.track || state.cues.length)) {
     // Subtitles were turned off entirely: drop the stale cues so the overlay
     // shows the "enable subtitles" tip instead of freezing on the last cues.
     clearSubtitleState();
@@ -160,10 +217,10 @@ export function scanTextTracks(video: HTMLVideoElement): void {
 function clearSubtitleState(): void {
   state.track = null;
   state.cues = [];
+  state.activeCue = null;
   lastCueSig = "";
   lastFirstStart = -1;
   stopTranslations();
-  resetAccumulatedCues();
   updateStatus();
   invalidateRender();
   render();
@@ -189,11 +246,11 @@ function snapshotCues(track: TextTrack): void {
   lastCueSig = sig;
   state.track = track;
   state.cues = cues;
+  state.activeCue = null;
   updateStatus();
   if (trackChanged) {
-    // New track (e.g. a different subtitle language) → the accumulated set and
-    // translations from the old track no longer apply.
-    resetAccumulatedCues();
+    // New track (e.g. a different subtitle language) → translations from the old
+    // track no longer apply.
     onTranslationConfigChanged();
   } else if (cues.length && cues[0].startTime !== lastFirstStart) {
     // Front of the list moved (cues evicted): index→translation mappings are
@@ -202,8 +259,6 @@ function snapshotCues(track: TextTrack): void {
     stopTranslations();
   }
   lastFirstStart = cues.length ? cues[0].startTime : -1;
-  // Keep the complete-download accumulator in sync with the latest snapshot.
-  accumulateCues(cues);
   // Indices into state.cues may now map to different cues, so the renderer's
   // index-based cache must be discarded.
   invalidateRender();
