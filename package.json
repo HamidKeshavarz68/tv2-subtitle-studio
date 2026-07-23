@@ -1,0 +1,26 @@
+{
+  "name": "tv2-subtitle-studio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Chrome extension that loads every TV 2 Play subtitle into a scrolling, time-synced overlay you can click to seek, translate with Google Translate, and download as an .srt file. Great for learning Norwegian.",
+  "license": "MIT",
+  "scripts": {
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "clean:all": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true});require('fs').rmSync('build',{recursive:true,force:true})\"",
+    "typecheck": "tsc -p .",
+    "icons": "node scripts/generate-icons.mjs",
+    "build": "npm run typecheck && npm run icons && node scripts/build.mjs",
+    "watch": "node scripts/build.mjs --watch",
+    "rebuild": "npm run clean && npm run build",
+    "zip": "npm run rebuild && node scripts/pack-zip.mjs",
+    "crx": "npm run rebuild && node scripts/pack-crx.mjs",
+    "package": "npm run clean:all && npm run build && node scripts/pack-zip.mjs && node scripts/pack-crx.mjs"
+  },
+  "devDependencies": {
+    "archiver": "^8.0.0",
+    "crx3": "^2.0.0",
+    "esbuild": "^0.28.0",
+    "sharp": "^0.33.5",
+    "typescript": "~5.5.4"
+  }
+}

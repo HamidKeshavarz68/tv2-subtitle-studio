@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4F9DFF"/>
+      <stop offset="100%" stop-color="#A77DFF"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="2" y="2" width="124" height="124" rx="24" fill="#07142D"/>
+
+  <text x="64" y="58"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="42"
+        font-weight="700"
+        text-anchor="middle"
+        fill="#FFFFFF">TV2</text>
+
+  <text x="64" y="92"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="18"
+        font-weight="700"
+        text-anchor="middle"
+        fill="url(#g)">SUB STUDIO</text>
+</svg>

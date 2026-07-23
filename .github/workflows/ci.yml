@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: TypeScript build
+        run: npm run rebuild
+
+      - name: Sanity check — required files exist
+        run: |
+          test -f manifest.json
+          test -f dist/content/index.js
+          test -f dist/background/index.js
+          test -f src/styles/overlay.css
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-build
+          path: |
+            manifest.json
+            dist/**
+            src/styles/**
+            public/**
+          retention-days: 14
+
