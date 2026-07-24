@@ -63,9 +63,6 @@ overlay.innerHTML = `
     <span class="nsr-title">${ICON_URL ? `<img class="nsr-icon" src="${ICON_URL}" alt="" />` : "📜"} TV2 Subtitle Studio</span>
     <span class="nsr-status">waiting…</span>
     <span class="nsr-actions">
-      <span class="nsr-group nsr-group-translate">
-        <button class="nsr-btn nsr-btn-text" data-act="translate-menu" title="Translation" aria-label="Translation">Translation</button>
-      </span>
       <span class="nsr-group nsr-group-settings">
         <button class="nsr-btn nsr-btn-text" data-act="settings" title="Settings" aria-label="Settings">Settings</button>
       </span>
@@ -82,15 +79,12 @@ overlay.innerHTML = `
         ${UI_LANGS.map((l) => `<option value="${l.code}">${l.name}</option>`).join("")}
       </select>
     </label>
-    <label class="nsr-settings-row">
-      <span data-i18n="setting_translator">Translator</span>
-      <select class="nsr-sel" data-act="set-translator">
-        ${TRANSLATORS.map((tr) => `<option value="${tr.code}">${tr.name}</option>`).join("")}
-      </select>
-    </label>
-    <div class="nsr-settings-row nsr-settings-row-col nsr-row-deepl-key" hidden>
-      <span data-i18n="setting_deepl_key">DeepL API key</span>
-      <input class="nsr-input" data-act="set-deepl-key" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Paste your DeepL API key" />
+    <div class="nsr-settings-row">
+      <span data-i18n="setting_font_size">Text size</span>
+      <span class="nsr-group nsr-group-font">
+        <button class="nsr-btn" type="button" data-act="font-down" title="Smaller text">A−</button>
+        <button class="nsr-btn" type="button" data-act="font-up" title="Larger text">A+</button>
+      </span>
     </div>
     <label class="nsr-settings-row">
       <span data-i18n="setting_playback_speed">Playback speed</span>
@@ -108,12 +102,27 @@ overlay.innerHTML = `
         <option value="2">2×</option>
       </select>
     </label>
-    <div class="nsr-settings-row">
-      <span data-i18n="setting_font_size">Text size</span>
-      <span class="nsr-group nsr-group-font">
-        <button class="nsr-btn" type="button" data-act="font-down" title="Smaller text">A−</button>
-        <button class="nsr-btn" type="button" data-act="font-up" title="Larger text">A+</button>
-      </span>
+    <label class="nsr-settings-row">
+      <span data-i18n="setting_display_mode">Display mode</span>
+      <select class="nsr-sel" data-act="mode" title="Display mode">
+        <option value="original">Original</option>
+        <option value="translated">Translated</option>
+        <option value="bilingual">Bilingual</option>
+      </select>
+    </label>
+    <label class="nsr-settings-row nsr-row-lang">
+      <span data-i18n="setting_target_lang">Translate to</span>
+      <select class="nsr-sel" data-act="lang" title="Translate to…"></select>
+    </label>
+    <label class="nsr-settings-row">
+      <span data-i18n="setting_translator">Translator</span>
+      <select class="nsr-sel" data-act="set-translator">
+        ${TRANSLATORS.map((tr) => `<option value="${tr.code}">${tr.name}</option>`).join("")}
+      </select>
+    </label>
+    <div class="nsr-settings-row nsr-settings-row-col nsr-row-deepl-key" hidden>
+      <span data-i18n="setting_deepl_key">DeepL API key</span>
+      <input class="nsr-input" data-act="set-deepl-key" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Paste your DeepL API key" />
     </div>
     <div class="nsr-settings-foot">
       <div class="nsr-settings-feedback" data-i18n="feedback_intro">Found a bug or have a suggestion?</div>
@@ -123,23 +132,6 @@ overlay.innerHTML = `
         <a class="nsr-link" href="${REPO_URL}" target="_blank" rel="noopener noreferrer" data-i18n="feedback_repo">GitHub repository</a>
       </div>
       <div class="nsr-settings-version">${VERSION ? `v${VERSION}` : ""}</div>
-    </div>
-  </div>
-  <div class="nsr-translate-panel" hidden>
-    <div class="nsr-settings-title-row"><div class="nsr-settings-title" data-i18n="translate_heading">Translation</div><button class="nsr-translate-close" type="button" title="Close" aria-label="Close">×</button></div>
-    <div class="nsr-translate-rows">
-      <label class="nsr-settings-row">
-        <span data-i18n="setting_display_mode">Display mode</span>
-        <select class="nsr-sel" data-act="mode" title="Display mode">
-          <option value="original">Original</option>
-          <option value="translated">Translated</option>
-          <option value="bilingual">Bilingual</option>
-        </select>
-      </label>
-      <label class="nsr-settings-row nsr-row-lang">
-        <span data-i18n="setting_target_lang">Translate to</span>
-        <select class="nsr-sel" data-act="lang" title="Translate to…"></select>
-      </label>
     </div>
   </div>
   <div class="nsr-body">
@@ -163,7 +155,6 @@ export const statusEl = overlay.querySelector(".nsr-status") as HTMLSpanElement;
 const bodyEl = overlay.querySelector(".nsr-body") as HTMLDivElement;
 const footEl = overlay.querySelector(".nsr-foot") as HTMLDivElement;
 const settingsPanel = overlay.querySelector(".nsr-settings") as HTMLDivElement;
-const translatePanel = overlay.querySelector(".nsr-translate-panel") as HTMLDivElement;
 
 // ---------- Fullscreen handling ----------
 // In fullscreen only the fullscreen element's subtree renders, so reparent the
@@ -375,7 +366,6 @@ modeSel.addEventListener("change", () => {
 
 // ---------- Settings menu ----------
 const settingsBtn = overlay.querySelector('button[data-act="settings"]') as HTMLButtonElement;
-const translateBtn = overlay.querySelector('button[data-act="translate-menu"]') as HTMLButtonElement;
 const uiLangSel = overlay.querySelector('select[data-act="set-uilang"]') as HTMLSelectElement;
 const translatorSel = overlay.querySelector('select[data-act="set-translator"]') as HTMLSelectElement;
 const deeplKeyRow = overlay.querySelector('.nsr-row-deepl-key') as HTMLDivElement;
@@ -392,30 +382,17 @@ function syncDeeplKeyVisibility(): void {
 syncDeeplKeyVisibility();
 
 function setSettingsOpen(open: boolean): void {
-  if (open) setTranslateOpen(false);
   settingsPanel.hidden = !open;
   settingsBtn.classList.toggle("nsr-btn-active", open);
 }
 const isSettingsOpen = (): boolean => !settingsPanel.hidden;
 
-function setTranslateOpen(open: boolean): void {
-  if (open) setSettingsOpen(false);
-  translatePanel.hidden = !open;
-  translateBtn.classList.toggle("nsr-btn-active", open);
-}
-const isTranslateOpen = (): boolean => !translatePanel.hidden;
-
 settingsBtn.addEventListener("click", (e) => {
   e.stopPropagation();
   setSettingsOpen(settingsPanel.hidden);
 });
-translateBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  setTranslateOpen(translatePanel.hidden);
-});
-// Keep clicks inside the panels from bubbling to the document-level close.
+// Keep clicks inside the panel from bubbling to the document-level close.
 settingsPanel.addEventListener("click", (e) => e.stopPropagation());
-translatePanel.addEventListener("click", (e) => e.stopPropagation());
 
 // Settings close button
 const settingsCloseBtn = overlay.querySelector('.nsr-settings-close') as HTMLButtonElement;
@@ -425,18 +402,9 @@ if (settingsCloseBtn) {
     setSettingsOpen(false);
   });
 }
-// Translation panel close button
-const translateCloseBtn = overlay.querySelector('.nsr-translate-close') as HTMLButtonElement;
-if (translateCloseBtn) {
-  translateCloseBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    setTranslateOpen(false);
-  });
-}
 // Close when clicking anywhere else.
 document.addEventListener("click", () => {
   if (isSettingsOpen()) setSettingsOpen(false);
-  if (isTranslateOpen()) setTranslateOpen(false);
 });
 
 uiLangSel.addEventListener("change", () => {
@@ -491,9 +459,6 @@ function applyI18n(): void {
   settingsBtn.title = t("settings_open");
   settingsBtn.setAttribute("aria-label", t("settings_open"));
   settingsBtn.textContent = t("settings_open");
-  translateBtn.title = t("translate_open");
-  translateBtn.setAttribute("aria-label", t("translate_open"));
-  translateBtn.textContent = t("translate_open");
 
   // Collapse/expand button reflects current state.
   toggleBtn.textContent = ui.isExpanded ? t("hide") : t("show");

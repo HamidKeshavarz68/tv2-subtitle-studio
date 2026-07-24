@@ -4,7 +4,7 @@
   top: 16px;
   left: 16px;
   width: 28vw;
-  height: 70vh;
+  height: 55vh;
   min-width: 240px;
   min-height: 140px;
   max-width: 95vw;
@@ -172,8 +172,7 @@
   border-color: rgba(255, 255, 255, 0.4);
 }
 
-#tv2-sub-roller .nsr-settings,
-#tv2-sub-roller .nsr-translate-panel {
+#tv2-sub-roller .nsr-settings {
   position: absolute;
   top: 40px;
   right: 8px;
@@ -188,13 +187,7 @@
   flex-direction: column;
   gap: 10px;
 }
-#tv2-sub-roller .nsr-settings[hidden],
-#tv2-sub-roller .nsr-translate-panel[hidden] { display: none; }
-#tv2-sub-roller .nsr-translate-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
+#tv2-sub-roller .nsr-settings[hidden] { display: none; }
 #tv2-sub-roller .nsr-settings-title {
   font-weight: 600;
   font-size: 12px;
@@ -306,8 +299,7 @@
   font-weight: bold;
   font-size: 1.1em;
 }
-#tv2-sub-roller .nsr-settings-close,
-#tv2-sub-roller .nsr-translate-close {
+#tv2-sub-roller .nsr-settings-close {
   background: none;
   border: none;
   color: #fff;
@@ -318,9 +310,7 @@
   transition: background 0.15s;
 }
 #tv2-sub-roller .nsr-settings-close:hover,
-#tv2-sub-roller .nsr-settings-close:focus,
-#tv2-sub-roller .nsr-translate-close:hover,
-#tv2-sub-roller .nsr-translate-close:focus {
+#tv2-sub-roller .nsr-settings-close:focus {
   background: rgba(255,255,255,0.12);
 }
 #tv2-sub-roller .nsr-settings-foot {
