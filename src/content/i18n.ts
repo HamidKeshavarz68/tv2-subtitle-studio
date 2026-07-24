@@ -37,6 +37,10 @@ export type MessageKey =
   | "setting_playback_speed"
   | "setting_font_size"
   | "setting_ui_language"
+  | "setting_translator"
+  | "setting_deepl_key"
+  | "deepl_key_placeholder"
+  | "deepl_fallback"
   | "feedback_intro"
   | "feedback_email"
   | "feedback_repo";
@@ -73,6 +77,10 @@ const MESSAGES: Record<UiLang, Messages> = {
     setting_playback_speed: "Playback speed",
     setting_font_size: "Text size",
     setting_ui_language: "Menu language",
+    setting_translator: "Translator",
+    setting_deepl_key: "DeepL API key",
+    deepl_key_placeholder: "Paste your DeepL API key",
+    deepl_fallback: "DeepL unavailable - using free Google Translate.",
     feedback_intro: "Found a bug, issue or have a suggestion?",
     feedback_email: "Email the author",
     feedback_repo: "GitHub repository",
@@ -106,6 +114,10 @@ const MESSAGES: Record<UiLang, Messages> = {
     setting_playback_speed: "Avspillingshastighet",
     setting_font_size: "Tekststørrelse",
     setting_ui_language: "Menyspråk",
+    setting_translator: "Oversetter",
+    setting_deepl_key: "DeepL API-nøkkel",
+    deepl_key_placeholder: "Lim inn DeepL API-nøkkelen din",
+    deepl_fallback: "DeepL utilgjengelig - bruker gratis Google Oversetter.",
     feedback_intro: "Funnet en feil eller har et forslag?",
     feedback_email: "Send e-post til utvikleren",
     feedback_repo: "GitHub-repositorium",

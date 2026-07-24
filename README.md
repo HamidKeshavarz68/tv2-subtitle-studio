@@ -10,7 +10,8 @@ panel that:
   with playback (past cues fade, the active line is highlighted, upcoming lines
   stay visible so you can read ahead),
 - can **translate** the subtitles to any of ~30 languages via Google Translate
-  (Original / Translated / Bilingual modes),
+  (free, default) or **DeepL** with your own API key (Original / Translated /
+  Bilingual modes),
 - lets you **click any line to seek** the video to that point,
 - adds a **playback-speed selector**,
 - adjusts **font size** (A− / A+),
@@ -70,7 +71,7 @@ Then:
 | **Mode** | `Original` / `Translated` / `Bilingual`. Bilingual shows the original above and a smaller, blue, italic translation below. Hidden when language is off. |
 | **Speed** | Sets `video.playbackRate` and re-asserts it if the player tries to reset. |
 | **A− / A+** | Cue font size (10 px – 32 px, persisted). |
-| **⚙ Settings** | Opens a dropdown to change menu language, playback speed and font size. |
+| **⚙ Settings** | Opens a dropdown to change menu language, translator (Google or DeepL), playback speed and font size. Choosing DeepL reveals a field to paste your API key. |
 | **Hide / Show** | Collapses the window to just the toolbar, or restores its previous size. |
 
 The settings dropdown is localised with a small built-in i18n layer (`src/content/i18n.ts`).
@@ -197,9 +198,25 @@ active line auto-scrolls to the centre.
   joins a 30 ms collection window, and the resulting set is sent to Google
   in **one HTTP request** (cues separated by a `@@@` token, then split back
   apart).
-- Per-pair LRU cache (`source|target|normalised text` → translation) so
-  repeats and seeks don't re-translate.
+- Per-pair LRU cache (`translator|source|target|normalised text` → translation)
+  so repeats and seeks don't re-translate. The cache key includes the translator
+  so switching providers never returns stale results.
 - Falls back to per-cue requests if the separator gets mangled.
+
+### DeepL (optional, bring your own key)
+
+- In **⚙ Settings** you can switch the translator from Google (free, default)
+  to **DeepL**. Selecting DeepL reveals a password-style field to paste your
+  API key; the choice and key are persisted (`tsr.translator`,
+  `tsr.deeplApiKey`).
+- DeepL requests are proxied through the same background service worker.
+  Free-tier keys (ending in `:fx`) use `api-free.deepl.com`; paid keys use
+  `api.deepl.com`. Cues are sent as separate `text` fields in one request and
+  rejoined, matching the batch splitter.
+- If the key is missing or rejected (wrong key, quota reached, or a language
+  DeepL does not support), translation **automatically falls back** to the free
+  Google Translate and a short warning toast is shown. No dependencies are
+  added, so it works on mobile and ARM devices (e.g. Raspberry Pi) too.
 
 ### Resizing & dragging
 
@@ -218,6 +235,8 @@ across reloads, but **size is** (`localStorage.tsr.size`).
 | `tsr.size` | `{ "w": …, "h": … }` |
 | `tsr.playbackRate` | number 0.25 – 4 |
 | `tsr.uiLang` | `en` / `no` (menu language) |
+| `tsr.translator` | `google` / `deepl` (default `google`) |
+| `tsr.deeplApiKey` | DeepL API key (used only when translator is `deepl`) |
 
 ## File layout
 
@@ -235,13 +254,14 @@ tv2-subtitle-studio/
 │   └── icons/                 Toolbar / web-store icons (placeholder SVG)
 └── src/
     ├── background/
-    │   └── index.ts           Service worker — Google Translate proxy
+    │   └── index.ts           Service worker — Google Translate + DeepL proxy
     ├── content/
     │   ├── index.ts           Entry: SPA gating + mount lifecycle
     │   ├── config.ts          Constants, language list, shared types
     │   ├── utils.ts           Pure helpers (strip/normalize/escape/time/storage)
     │   ├── state.ts           Shared state + persisted settings
-    │   ├── translator.ts      Google Translate proxy + coalesced batch engine
+    │   ├── translator.ts      Google/DeepL proxy + coalesced batch engine + fallback
+    │   ├── toast.ts           Dependency-free transient toast (e.g. DeepL fallback)
     │   ├── native-subtitles.ts Hide/restore the player's native captions
     │   ├── renderer.ts        Status line + rolling-window render
     │   ├── overlay.ts         Overlay DOM, toolbar, settings menu, drag/resize, click-to-seek
@@ -270,8 +290,8 @@ Built with `npm run build` → `dist/content/index.js` and
 
 ## Roadmap
 
-- Optional cloud providers with API keys (DeepL, Google Cloud Translation
-  v3) for higher quality / quota guarantees.
+- Additional cloud providers with API keys (Google Cloud Translation v3) for
+  higher quality / quota guarantees. (DeepL is already supported.)
 - Persistent translation cache per-program in `chrome.storage.local`.
 
 ## License

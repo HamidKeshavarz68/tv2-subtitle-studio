@@ -209,6 +209,53 @@
   font-size: 12px;
   cursor: pointer;
 }
+/* Stacked variant: label above a full-width control (e.g. the DeepL key field). */
+#tv2-sub-roller .nsr-settings-row.nsr-settings-row-col {
+  flex-direction: column;
+  align-items: stretch;
+}
+#tv2-sub-roller .nsr-settings-row.nsr-settings-row-col[hidden] { display: none; }
+#tv2-sub-roller .nsr-input {
+  box-sizing: border-box;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f5f5f7;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  height: 28px;
+  padding: 0 8px;
+  font-size: 12px;
+  touch-action: manipulation;
+}
+#tv2-sub-roller .nsr-input::placeholder { color: rgba(245, 245, 247, 0.45); }
+#tv2-sub-roller .nsr-input:focus {
+  outline: none;
+  border-color: rgba(120, 170, 255, 0.8);
+}
+#tv2-sub-roller-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 12%;
+  transform: translate(-50%, 12px);
+  z-index: 2147483647;
+  max-width: min(90vw, 420px);
+  padding: 10px 16px;
+  background: rgba(29, 29, 34, 0.96);
+  color: #f5f5f7;
+  border: 1px solid rgba(255, 165, 0, 0.7);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  font-size: 13px;
+  line-height: 1.35;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+#tv2-sub-roller-toast.nsr-toast-show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
 #tv2-sub-roller .nsr-toggle-row {
   display: flex;
   align-items: center;

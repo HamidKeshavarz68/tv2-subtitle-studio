@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file. The format
 is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Translator choice** in the Settings menu: pick between the free Google
+  Translate (default) and **DeepL** (bring your own API key). Selecting DeepL
+  reveals a password-style field to paste the key; both the choice and the key
+  persist across sessions (`tsr.translator`, `tsr.deeplApiKey`).
+- **Automatic fallback**: if no DeepL key is entered or the key is rejected
+  (wrong key, quota reached, unsupported language), translation silently falls
+  back to the free Google Translate and shows a brief, throttled warning toast.
+  DeepL requests are proxied through the background service worker (free-tier
+  `:fx` keys use `api-free.deepl.com`, paid keys use `api.deepl.com`), keeping
+  the extension dependency-free and working on mobile and ARM devices.
+
 ## [0.1.0] - 2026-07-23
 
 Initial release of **TV2 Subtitle Studio**, a Chrome (MV3) extension for
