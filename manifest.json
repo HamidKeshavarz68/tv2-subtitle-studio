@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TV2 Subtitle Studio",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "description": "Loads every TV 2 Play subtitle into a scrolling, time-synced overlay you can click to seek and translate.",
   "icons": {
     "16": "public/icons/icon-16.png",
@@ -30,7 +30,9 @@
   ],
   "host_permissions": [
     "https://play.tv2.no/*",
-    "https://translate.googleapis.com/*"
+    "https://translate.googleapis.com/*",
+    "https://api-free.deepl.com/*",
+    "https://api.deepl.com/*"
   ],
   "web_accessible_resources": [
     {

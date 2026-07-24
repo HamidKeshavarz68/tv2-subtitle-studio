@@ -10,6 +10,8 @@ import {
   LANGS,
   OVERLAY_ID,
   STORAGE_KEYS,
+  TRANSLATORS,
+  TranslatorProvider,
   UI_LANGS,
   UiLang,
   WINDOW_MIN,
@@ -17,17 +19,19 @@ import {
 import {
   applyPlaybackRate,
   detectSourceLang,
+  setDeeplApiKey,
   setDisplayMode,
   setFontSize,
   setPlaybackRate,
   setTargetLang,
+  setTranslator,
   settings,
   state,
   ui,
 } from "./state";
 import { readStorage, writeStorage } from "./utils";
 import { invalidateRender, render, updateStatus } from "./renderer";
-import { onTranslationConfigChanged } from "./translator";
+import { clearTranslationCache, onTranslationConfigChanged } from "./translator";
 import { applyNativeSubtitleVisibility } from "./native-subtitles";
 import { getUiLang, onUiLangChange, setUiLang, t } from "./i18n";
 
@@ -78,6 +82,16 @@ overlay.innerHTML = `
         ${UI_LANGS.map((l) => `<option value="${l.code}">${l.name}</option>`).join("")}
       </select>
     </label>
+    <label class="nsr-settings-row">
+      <span data-i18n="setting_translator">Translator</span>
+      <select class="nsr-sel" data-act="set-translator">
+        ${TRANSLATORS.map((tr) => `<option value="${tr.code}">${tr.name}</option>`).join("")}
+      </select>
+    </label>
+    <div class="nsr-settings-row nsr-settings-row-col nsr-row-deepl-key" hidden>
+      <span data-i18n="setting_deepl_key">DeepL API key</span>
+      <input class="nsr-input" data-act="set-deepl-key" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Paste your DeepL API key" />
+    </div>
     <label class="nsr-settings-row">
       <span data-i18n="setting_playback_speed">Playback speed</span>
       <select class="nsr-sel" data-act="speed" title="Playback speed">
@@ -363,8 +377,19 @@ modeSel.addEventListener("change", () => {
 const settingsBtn = overlay.querySelector('button[data-act="settings"]') as HTMLButtonElement;
 const translateBtn = overlay.querySelector('button[data-act="translate-menu"]') as HTMLButtonElement;
 const uiLangSel = overlay.querySelector('select[data-act="set-uilang"]') as HTMLSelectElement;
+const translatorSel = overlay.querySelector('select[data-act="set-translator"]') as HTMLSelectElement;
+const deeplKeyRow = overlay.querySelector('.nsr-row-deepl-key') as HTMLDivElement;
+const deeplKeyInput = overlay.querySelector('input[data-act="set-deepl-key"]') as HTMLInputElement;
 
 uiLangSel.value = getUiLang();
+translatorSel.value = settings.translator;
+deeplKeyInput.value = settings.deeplApiKey;
+
+/** Show the DeepL API-key row only when DeepL is the selected provider. */
+function syncDeeplKeyVisibility(): void {
+  deeplKeyRow.hidden = settings.translator !== "deepl";
+}
+syncDeeplKeyVisibility();
 
 function setSettingsOpen(open: boolean): void {
   if (open) setTranslateOpen(false);
@@ -418,6 +443,31 @@ uiLangSel.addEventListener("change", () => {
   setUiLang(uiLangSel.value as UiLang);
 });
 
+// Translator provider: switch, toggle the key row, drop cached results (they are
+// provider-specific), then re-render/re-translate.
+translatorSel.addEventListener("change", () => {
+  setTranslator(translatorSel.value as TranslatorProvider);
+  syncDeeplKeyVisibility();
+  clearTranslationCache();
+  onTranslationConfigChanged();
+});
+
+// DeepL API key: persist per keystroke, but debounce the (expensive) re-translate
+// so it only fires once the user pauses typing.
+let deeplKeyDebounce: number | null = null;
+deeplKeyInput.addEventListener("input", () => {
+  setDeeplApiKey(deeplKeyInput.value.trim());
+  clearTranslationCache();
+  if (deeplKeyDebounce !== null) clearTimeout(deeplKeyDebounce);
+  deeplKeyDebounce = self.setTimeout(() => {
+    deeplKeyDebounce = null;
+    onTranslationConfigChanged();
+  }, 600);
+});
+// Keep typing/tapping in the key field from closing the panel or dragging the header.
+deeplKeyInput.addEventListener("keydown", (e) => e.stopPropagation());
+deeplKeyInput.addEventListener("pointerdown", (e) => e.stopPropagation());
+
 // ---------- Footer tip ----------
 // The "enable subtitles in the player" tip is only useful until subtitles have
 // actually been captured; hide it once cues exist.
@@ -450,6 +500,8 @@ function applyI18n(): void {
   toggleBtn.title = ui.isExpanded ? t("hide_title") : t("show_title");
 
   footEl.innerHTML = `<small>${t("tip")}</small>`;
+
+  deeplKeyInput.placeholder = t("deepl_key_placeholder");
 
   overlay.querySelectorAll<HTMLElement>("[data-i18n]").forEach((el) => {
     const key = el.dataset.i18n as Parameters<typeof t>[0] | undefined;

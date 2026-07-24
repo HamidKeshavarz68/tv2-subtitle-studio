@@ -6,7 +6,19 @@ export type DisplayMode = "original" | "translated" | "bilingual";
 export type TranslationState = "pending" | "done" | "error";
 export type UiLang = "en" | "no";
 
+/** Available translation back-ends. */
+export type TranslatorProvider = "google" | "deepl";
+
 export const OVERLAY_ID = "tv2-sub-roller";
+
+/** Default translator: the free, key-less Google Translate proxy. */
+export const DEFAULT_TRANSLATOR: TranslatorProvider = "google";
+
+/** Selectable translation providers. */
+export const TRANSLATORS: { code: TranslatorProvider; name: string }[] = [
+  { code: "google", name: "Google (free)" },
+  { code: "deepl", name: "DeepL (API key)" },
+];
 
 /** Selectable UI (menu) languages. */
 export const UI_LANGS: { code: UiLang; name: string }[] = [
@@ -24,6 +36,8 @@ export const STORAGE_KEYS = {
   targetLang: "tsr.targetLang",
   displayMode: "tsr.displayMode",
   uiLang: "tsr.uiLang",
+  translator: "tsr.translator",
+  deeplApiKey: "tsr.deeplApiKey",
 } as const;
 
 export const FONT = { min: 10, max: 32, step: 2, default: 13 } as const;
