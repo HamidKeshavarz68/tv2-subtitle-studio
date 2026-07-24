@@ -28,8 +28,6 @@ export type MessageKey =
   | "empty"
   | "translation_failed"
   | "no_translation"
-  | "translate_open"
-  | "translate_heading"
   | "setting_target_lang"
   | "setting_display_mode"
   | "settings_open"
@@ -68,8 +66,6 @@ const MESSAGES: Record<UiLang, Messages> = {
       "select a language — every cue will then be loaded and rolled here.",
     translation_failed: "Translation failed (click cue to retry by changing language)",
     no_translation: "— No translation —",
-    translate_open: "Translation",
-    translate_heading: "Translation",
     setting_target_lang: "Translate to",
     setting_display_mode: "Display mode",
     settings_open: "Settings",
@@ -105,8 +101,6 @@ const MESSAGES: Record<UiLang, Messages> = {
       "et språk — hver linje lastes da inn og rulles her.",
     translation_failed: "Oversettelsen mislyktes (klikk på linjen for å prøve igjen ved å bytte språk)",
     no_translation: "— Ingen oversettelse —",
-    translate_open: "Oversettelse",
-    translate_heading: "Oversettelse",
     setting_target_lang: "Oversett til",
     setting_display_mode: "Visningsmodus",
     settings_open: "Innstillinger",

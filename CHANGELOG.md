@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file. The format
 is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2026-07-24
+
+### Changed
+
+- Merged the **Translation** menu into the **Settings** menu, removing the
+  separate Translation button and panel. Settings now lists, in order: Menu
+  language, Text size, Playback speed, Display mode, Translate to (target
+  language), Translator, and the DeepL API key field (shown only when DeepL is
+  selected).
+
 ## [0.4.0] - 2026-07-24
 
 ### Added

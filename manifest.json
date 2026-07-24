@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TV2 Subtitle Studio",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Loads every TV 2 Play subtitle into a scrolling, time-synced overlay you can click to seek and translate.",
   "icons": {
     "16": "public/icons/icon-16.png",
