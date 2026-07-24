@@ -81,7 +81,7 @@ function warnDeeplFallback(reason?: unknown): void {
   if (now - lastFallbackWarnAt < 8000) return;
   lastFallbackWarnAt = now;
   try {
-    showToast(t("deepl_fallback"));
+    showToast(t("deepl_fallback"), 7000);
   } catch {
     // ignore toast failures
   }
