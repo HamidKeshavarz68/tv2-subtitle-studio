@@ -1,18 +1,25 @@
 /**
- * Injects a settings button into TV 2 Play's bottom control bar, to the left of
- * the subtitle and fullscreen buttons, so the extension's settings menu can be
- * opened straight from the video's bottom-right corner. The "no → en" status
- * indicator sits directly to the left of the button.
+ * Injects a settings button into TV 2 Play's bottom control bar, at the very
+ * left of the right-aligned button group (before all of TV 2's own controls), so
+ * the extension's settings menu can be opened straight from the video's
+ * bottom-right corner. The "no → en" status indicator sits directly to the left
+ * of the button, giving the final order:
+ *   [no → en] [settings] [ …TV 2's native buttons… ]
  *
  * TV 2 Play's player is a React app whose emotion CSS class names are hashed and
  * unstable, but its controls carry stable `data-testid` hooks:
  *   - the bottom control bar is `[data-testid="player-controls"]`,
  *   - the subtitle button is `[data-testid="player-subtitles-button"]`,
  *   - the fullscreen button is `[data-testid="player-toggle-fullscreen-button"]`.
- * We clone a neighbouring control button's class list so ours inherits the native
- * sizing/hover, and show the extension's own icon so it clearly belongs to us.
- * The control bar is torn down and rebuilt across fullscreen transitions, so this
- * is called repeatedly (see index.ts) to re-inject the button whenever it's gone.
+ * Each native button lives in its own wrapper `<div>` inside one shared,
+ * right-aligned flex group. We find that group as the lowest common ancestor of
+ * the subtitle and fullscreen buttons and prepend our elements to it as clean
+ * siblings of those wrappers — inserting *inside* a button's tooltip wrapper
+ * instead would swallow our click. We clone a native button's class list so ours
+ * inherits the native sizing/hover, and show the extension's own icon so it
+ * clearly belongs to us. The control bar is torn down and rebuilt across
+ * fullscreen transitions, so this is called repeatedly (see index.ts) to
+ * re-inject the button whenever it's gone.
  */
 
 import { TV2 } from "./config";
@@ -34,32 +41,75 @@ const ICON_URL = (() => {
 
 let button: HTMLButtonElement | null = null;
 
-/**
- * Find where our button should go. Prefer sitting just before the subtitle
- * button (left of both native icons); otherwise before the fullscreen button;
- * otherwise at the end of the bottom control bar.
- */
-function findInsertTarget(): { anchor: HTMLElement; before: boolean } | null {
-  const subtitle = document.querySelector<HTMLElement>(TV2.subtitlesButton);
-  if (subtitle) return { anchor: subtitle, before: true };
-
-  const fullscreen = document.querySelector<HTMLElement>(TV2.fullscreenButton);
-  if (fullscreen) return { anchor: fullscreen, before: true };
-
-  const controls = document.querySelector(TV2.controls);
-  const buttons = controls
-    ? Array.from(controls.querySelectorAll<HTMLElement>("button"))
-    : [];
-  const last = buttons[buttons.length - 1];
-  return last ? { anchor: last, before: false } : null;
+/** Walk up the ancestor chain, nearest first (including the element itself). */
+function ancestorChain(el: HTMLElement): HTMLElement[] {
+  const chain: HTMLElement[] = [];
+  let cur: HTMLElement | null = el;
+  while (cur) {
+    chain.push(cur);
+    cur = cur.parentElement;
+  }
+  return chain;
 }
 
-function createButton(sibling: HTMLElement): HTMLButtonElement {
+/** Lowest common ancestor of two elements, or null if they don't share one. */
+function lowestCommonAncestor(a: HTMLElement, b: HTMLElement): HTMLElement | null {
+  const set = new Set(ancestorChain(b));
+  for (const node of ancestorChain(a)) {
+    if (set.has(node)) return node;
+  }
+  return null;
+}
+
+/**
+ * Locate the right-aligned button group and the point our elements should go
+ * before. The group is the lowest common ancestor of the subtitle and fullscreen
+ * buttons; we insert before its first child so we land left of every native
+ * button, as a clean sibling of their wrapper `<div>`s (never nested inside a
+ * button's tooltip wrapper, which would swallow clicks). `styleSource` is a
+ * native button we clone classes from for matching sizing/hover.
+ */
+function findInsertTarget():
+  | { parent: HTMLElement; before: HTMLElement | null; styleSource: HTMLElement }
+  | null {
+  const subtitle = document.querySelector<HTMLElement>(TV2.subtitlesButton);
+  const fullscreen = document.querySelector<HTMLElement>(TV2.fullscreenButton);
+
+  // Preferred: prepend to the shared group holding both native buttons.
+  if (subtitle && fullscreen) {
+    const group = lowestCommonAncestor(subtitle, fullscreen);
+    if (group) {
+      return { parent: group, before: group.firstElementChild as HTMLElement | null, styleSource: subtitle };
+    }
+  }
+
+  // Fallbacks: sit before whichever native button we can find, at group level.
+  const anchorBtn = subtitle ?? fullscreen;
+  if (anchorBtn) {
+    // Climb to the wrapper that is a direct child of the button's group so we
+    // insert as a sibling of it rather than inside the tooltip wrapper.
+    const parent = anchorBtn.parentElement;
+    if (parent) {
+      return { parent, before: anchorBtn, styleSource: anchorBtn };
+    }
+  }
+
+  // Last resort: append to the end of the control bar.
+  const controls = document.querySelector<HTMLElement>(TV2.controls);
+  if (controls) {
+    const buttons = Array.from(controls.querySelectorAll<HTMLElement>("button"));
+    const last = buttons[buttons.length - 1] ?? controls;
+    return { parent: controls, before: null, styleSource: last };
+  }
+  return null;
+}
+
+function createButton(styleSource: HTMLElement): HTMLButtonElement {
   const btn = document.createElement("button");
   btn.type = "button";
-  // Reuse the neighbouring control button's classes so ours matches the native
+  // Reuse a native control button's classes so ours matches the native
   // sizing/hover/radius, then add our own marker class.
-  const inherited = sibling.tagName === "BUTTON" ? sibling.className : "";
+  const inherited = styleSource.tagName === "BUTTON" ? styleSource.className : "";
   btn.className = (inherited ? inherited + " " : "") + BTN_CLASS;
   const img = document.createElement("img");
   img.src = ICON_URL;
@@ -97,15 +147,10 @@ export function injectSettingsButton(): void {
   }
 
   const target = findInsertTarget();
-  if (!target || !target.anchor.parentElement) return;
+  if (!target) return;
 
-  const parent = target.anchor.parentElement;
-  button = createButton(target.anchor);
-  if (target.before) {
-    parent.insertBefore(button, target.anchor);
-  } else {
-    parent.insertBefore(button, target.anchor.nextSibling);
-  }
+  button = createButton(target.styleSource);
+  target.parent.insertBefore(button, target.before);
   ensureStatusBeside(button);
 }
 

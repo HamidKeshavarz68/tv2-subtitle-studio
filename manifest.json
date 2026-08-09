@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "TV2 Subtitle Studio",
   "version": "0.5.0",
-  "description": "Learn Norwegian while watching TV 2 Play: click-to-seek subtitles, live translation, and bilingual on-video captions.",
+  "description": "Learn Norwegian on TV 2 Play: click-to-seek subtitles, single-line caption view, live translation, and bilingual captions.",
   "icons": {
     "16": "public/icons/icon-16.png",
     "32": "public/icons/icon-32.png",
