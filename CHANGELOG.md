@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file. The format
 is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-08-10
+
+### Changed
+
+- **Single line (TV2)**: the translated line now follows the Rolling list
+  translation style — smaller, italic and light blue — and sits on the same
+  background box as the original line, so the two read as one caption.
+- **Text size** control now shows the current size (in px) between the `A−` and
+  `A+` buttons, and its range widened to **6–36 px** (default **12**).
+
+### Fixed
+
+- **Single line (TV2)**: on autoplay the styled/translated caption now appears
+  immediately instead of only after seeking. The overlay is driven by the
+  caption TV 2 is actually painting rather than a cue-list time window that is
+  not yet calibrated to the video clock right after load.
+
 ## [0.5.0] - 2026-08-09
 
 ### Added
