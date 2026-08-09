@@ -62,39 +62,48 @@ function lowestCommonAncestor(a: HTMLElement, b: HTMLElement): HTMLElement | nul
 }
 
 /**
- * Locate the right-aligned button group and the point our elements should go
- * before. The group is the lowest common ancestor of the subtitle and fullscreen
- * buttons; we insert before its first child so we land left of every native
- * button, as a clean sibling of their wrapper `<div>`s (never nested inside a
+ * Locate the right-aligned button group: the lowest common ancestor of the
+ * subtitle and fullscreen buttons. Each native button lives in its own wrapper
+ * `<div>` directly inside this group, so prepending to the group lands us left of
+ * every native button as a clean sibling of those wrappers (never nested inside a
  * button's tooltip wrapper, which would swallow clicks). `styleSource` is a
  * native button we clone classes from for matching sizing/hover.
  */
-function findInsertTarget():
-  | { parent: HTMLElement; before: HTMLElement | null; styleSource: HTMLElement }
-  | null {
+function findGroup(): { group: HTMLElement; styleSource: HTMLElement } | null {
   const subtitle = document.querySelector<HTMLElement>(TV2.subtitlesButton);
   const fullscreen = document.querySelector<HTMLElement>(TV2.fullscreenButton);
-
-  // Preferred: prepend to the shared group holding both native buttons.
   if (subtitle && fullscreen) {
     const group = lowestCommonAncestor(subtitle, fullscreen);
-    if (group) {
-      return { parent: group, before: group.firstElementChild as HTMLElement | null, styleSource: subtitle };
-    }
+    if (group) return { group, styleSource: subtitle };
   }
+  return null;
+}
 
-  // Fallbacks: sit before whichever native button we can find, at group level.
-  const anchorBtn = subtitle ?? fullscreen;
-  if (anchorBtn) {
-    // Climb to the wrapper that is a direct child of the button's group so we
-    // insert as a sibling of it rather than inside the tooltip wrapper.
-    const parent = anchorBtn.parentElement;
-    if (parent) {
-      return { parent, before: anchorBtn, styleSource: anchorBtn };
-    }
+/**
+ * The first child of the group that isn't one of ours — i.e. the wrapper of the
+ * left-most native button. Our elements are inserted before this so they sit at
+ * the very start of the group.
+ */
+function firstNativeChild(group: HTMLElement): HTMLElement | null {
+  for (const child of Array.from(group.children)) {
+    const el = child as HTMLElement;
+    if (el === button || el === statusEl || el.classList.contains(BTN_CLASS)) continue;
+    return el;
   }
+  return null;
+}
 
-  // Last resort: append to the end of the control bar.
+/**
+ * Fallback insertion point used only until the shared group can be resolved
+ * (e.g. a very early call before both native buttons have rendered).
+ */
+function fallbackTarget(): { parent: HTMLElement; before: HTMLElement | null; styleSource: HTMLElement } | null {
+  const anchorBtn =
+    document.querySelector<HTMLElement>(TV2.subtitlesButton) ??
+    document.querySelector<HTMLElement>(TV2.fullscreenButton);
+  if (anchorBtn && anchorBtn.parentElement) {
+    return { parent: anchorBtn.parentElement, before: anchorBtn, styleSource: anchorBtn };
+  }
   const controls = document.querySelector<HTMLElement>(TV2.controls);
   if (controls) {
     const buttons = Array.from(controls.querySelectorAll<HTMLElement>("button"));
@@ -134,21 +143,38 @@ function createButton(styleSource: HTMLElement): HTMLButtonElement {
 
 /**
  * Add the settings button (and the status indicator to its left) to the player
- * control bar if they aren't there yet.
+ * control bar, and keep it anchored at the very start of the right-aligned button
+ * group. Because TV 2 re-renders its controls (and this runs from a
+ * MutationObserver), an early call may land the button in a fallback spot before
+ * both native buttons exist; every later call re-anchors it to the group start
+ * once the group is resolvable. All moves are guarded so we never mutate the DOM
+ * when already in place (which would feed the observer back into a loop).
  */
 export function injectSettingsButton(): void {
-  // Already present and still attached → make sure the status sits just to the
-  // left of the button, then stop.
   const existing = document.querySelector("." + BTN_CLASS) as HTMLButtonElement | null;
-  if (existing && existing.isConnected) {
-    button = existing;
+  if (existing && existing.isConnected) button = existing;
+
+  const g = findGroup();
+  if (g) {
+    if (!button || !button.isConnected) button = createButton(g.styleSource);
+    // Re-anchor to the start of the group (left of every native button) only if
+    // it isn't already there.
+    const before = firstNativeChild(g.group);
+    if (button.parentElement !== g.group || button.nextElementSibling !== before) {
+      g.group.insertBefore(button, before);
+    }
     ensureStatusBeside(button);
     return;
   }
 
-  const target = findInsertTarget();
+  // No group yet → leave an already-placed button alone, else drop one in a
+  // temporary fallback spot; a later call will re-anchor it correctly.
+  if (button && button.isConnected) {
+    ensureStatusBeside(button);
+    return;
+  }
+  const target = fallbackTarget();
   if (!target) return;
-
   button = createButton(target.styleSource);
   target.parent.insertBefore(button, target.before);
   ensureStatusBeside(button);
