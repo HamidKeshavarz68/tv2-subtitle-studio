@@ -495,6 +495,14 @@
 }
 .nsr-settings-host .nsr-group[hidden] { display: none; }
 
+.nsr-settings-host .nsr-font-value {
+  min-width: 22px;
+  text-align: center;
+  color: #f5f5f7;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
 .nsr-settings-host .nsr-sel {
   background: rgba(255, 255, 255, 0.08);
   color: #f5f5f7;
@@ -658,9 +666,15 @@
 }
 /* Original: the source language, on a neutral dark box. */
 .nsr-cap-overlay .nsr-cap-orig { background: rgba(0, 0, 0, 0.62); }
-/* Translation: the main line, on a box tinted slightly blue so it's clearly
-   distinct from the original. */
-.nsr-cap-overlay .nsr-cap-trans { background: rgba(12, 28, 54, 0.86); }
+/* Translation: matches the rolling-list style — smaller, italic and a light
+   blue tint — so it reads clearly as the translation, on a dark box tinted
+   slightly blue for legibility over the video. */
+.nsr-cap-overlay .nsr-cap-trans {
+  background: rgba(0, 0, 0, 0.62);
+  color: #9ec9ff;
+  font-size: 0.88em;
+  font-style: italic;
+}
 /* Reserved-but-not-yet-ready translation line: keeps its height so revealing
    the text later doesn't shift the original. */
 .nsr-cap-overlay .nsr-cap-pending { visibility: hidden; }

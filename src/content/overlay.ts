@@ -84,6 +84,7 @@ overlay.innerHTML = `
       <span data-i18n="setting_font_size">Text size</span>
       <span class="nsr-group nsr-group-font">
         <button class="nsr-btn" type="button" data-act="font-down" title="Smaller text">A−</button>
+        <span class="nsr-font-value" data-font-value>${settings.fontSize}</span>
         <button class="nsr-btn" type="button" data-act="font-up" title="Larger text">A+</button>
       </span>
     </div>
@@ -194,6 +195,10 @@ document.addEventListener("webkitfullscreenchange", syncFullscreenParent as Even
 // ---------- Font size ----------
 function renderFontSize(): void {
   overlay.style.setProperty("--nsr-cue-size", settings.fontSize + "px");
+  const valueEl =
+    settingsHost.querySelector("[data-font-value]") ||
+    overlay.querySelector("[data-font-value]");
+  if (valueEl) valueEl.textContent = String(settings.fontSize);
 }
 renderFontSize();
 

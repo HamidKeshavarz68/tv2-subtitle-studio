@@ -50,7 +50,7 @@ export const STORAGE_KEYS = {
   deeplApiKey: "tsr.deeplApiKey",
 } as const;
 
-export const FONT = { min: 10, max: 32, step: 2, default: 13 } as const;
+export const FONT = { min: 6, max: 36, step: 2, default: 12 } as const;
 export const SPEED = { min: 0.25, max: 4, default: 1 } as const;
 
 /** Minimum overlay window size, in px. */
