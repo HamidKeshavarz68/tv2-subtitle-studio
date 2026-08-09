@@ -3,6 +3,15 @@
  */
 
 export type DisplayMode = "original" | "translated" | "bilingual";
+
+/**
+ * How subtitles are shown:
+ *  - "rolling": the extension's scrolling window with past/upcoming cues.
+ *  - "single": the extension window is hidden and TV 2 Play's own native
+ *    single-line subtitle UI is used instead.
+ */
+export type ViewMode = "rolling" | "single";
+
 export type TranslationState = "pending" | "done" | "error";
 export type UiLang = "en" | "no";
 
@@ -35,6 +44,7 @@ export const STORAGE_KEYS = {
   playbackRate: "tsr.playbackRate",
   targetLang: "tsr.targetLang",
   displayMode: "tsr.displayMode",
+  viewMode: "tsr.viewMode",
   uiLang: "tsr.uiLang",
   translator: "tsr.translator",
   deeplApiKey: "tsr.deeplApiKey",
@@ -61,6 +71,34 @@ export const TRANSLATE = {
 
 /** play.tv2.no video URLs typically contain one of these path segments. */
 export const VIDEO_PAGE_RE = /\/(serier|filmer|film|sport|direkte|program|episode|se)(\/|$)/;
+
+/**
+ * TV 2 Play player DOM hooks. The player is a React app that uses stable
+ * `data-testid` attributes on its controls (the emotion CSS class names are
+ * hashed and unstable, so we never rely on those). RxPlayer renders the actual
+ * on-video caption into `.rxp-texttrack-*` nodes.
+ */
+export const TV2 = {
+  /** The bottom control-bar container. */
+  controls: '[data-testid="player-controls"]',
+  /** The subtitle (CC) button — our settings button is inserted before it. */
+  subtitlesButton: '[data-testid="player-subtitles-button"]',
+  /** The fullscreen button — fallback insertion anchor. */
+  fullscreenButton: '[data-testid="player-toggle-fullscreen-button"]',
+  /**
+   * Scrubber / progress elements used to detect control-bar visibility. TV 2
+   * fades the whole control bar via opacity, so `checkVisibility({checkOpacity})`
+   * on any of these reports whether the controls are currently showing.
+   */
+  scrubberSelectors: [
+    '[data-testid="player-progress-track"]',
+    '[data-testid="player-progress-input"]',
+    '[data-testid="player-timeline"]',
+    '[data-testid="player-controls"]',
+  ],
+  /** RxPlayer's rendered-caption nodes (used to measure the native font size). */
+  captionTextSelectors: [".rxp-texttrack-span", ".rxp-texttrack-p", ".rxp-texttrack-region"],
+} as const;
 
 /** Curated translation targets (BCP-47 base codes). "off" disables translation. */
 export const LANGS: { code: string; name: string }[] = [

@@ -18,10 +18,11 @@
 
 import { VIDEO_PAGE_RE } from "./config";
 import { state } from "./state";
-import { overlay, syncFullscreenParent } from "./overlay";
+import { overlay, syncFullscreenParent, closeSettings, settingsHost } from "./overlay";
 import { applyNativeSubtitleVisibility, clearNativeSubtitleHiding } from "./native-subtitles";
 import { stopTranslations } from "./translator";
 import { attachToVideo, detachVideo, findVideo, scanTextTracks } from "./video";
+import { injectSettingsButton, removePlayerButton } from "./player-controls";
 
 if (!(window as any).__tv2SubtitleStudioLoaded) {
   (window as any).__tv2SubtitleStudioLoaded = true;
@@ -39,15 +40,20 @@ function bootstrap(): void {
     const should = isVideoPage();
     if (should && !mounted) {
       document.documentElement.appendChild(overlay);
+      document.documentElement.appendChild(settingsHost);
       syncFullscreenParent(); // in case we entered fullscreen on the new page
       mounted = true;
       const v = findVideo();
       if (v) attachToVideo(v);
       applyNativeSubtitleVisibility();
+      injectSettingsButton();
     } else if (!should && mounted) {
       // Leaving a video page → tear everything down.
       clearNativeSubtitleHiding();
+      closeSettings();
+      removePlayerButton();
       overlay.parentElement?.removeChild(overlay);
+      settingsHost.parentElement?.removeChild(settingsHost);
       stopTranslations();
       detachVideo();
       state.video = null;
@@ -79,6 +85,9 @@ function bootstrap(): void {
     if (!mounted) return;
     const v = findVideo();
     if (v && v !== state.video) attachToVideo(v);
+    // TV 2's React player re-renders its controls across state changes, so
+    // re-add our settings button promptly whenever it gets wiped.
+    injectSettingsButton();
   });
   mo.observe(document.documentElement, { childList: true, subtree: true });
 
@@ -86,6 +95,9 @@ function bootstrap(): void {
   setInterval(() => {
     mountIfNeeded();
     if (!mounted) return;
+    // TV 2 rebuilds its controls across navigations / fullscreen toggles, so
+    // re-add our settings button whenever it has gone missing.
+    injectSettingsButton();
     if (!state.video || !document.contains(state.video)) {
       const v = findVideo();
       if (v) attachToVideo(v);

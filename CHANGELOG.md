@@ -4,6 +4,33 @@ All notable changes to this project will be documented in this file. The format
 is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-08-09
+
+### Added
+
+- **Single line (TV2)** subtitle view (Settings → Subtitle view). Instead of the
+  scrolling side window, the extension overrides TV 2 Play's own on-video caption
+  in place: in **Translated** mode it shows one translated line, and in
+  **Bilingual** mode it stacks the original above the translation, both centered
+  over the video like a normal subtitle. The original **Rolling list** view
+  remains the default. The choice persists across sessions (`tsr.viewMode`).
+- The on-video caption is produced **non-destructively**: TV 2's native caption
+  text is hidden with global CSS (never by touching the text track's `mode` or
+  overwriting the player's own nodes), so seeking, pausing and switching
+  subtitle tracks keep working. The caption automatically lifts above the player
+  control bar while the controls are visible and drops back when they hide, and
+  matches TV 2's own caption size (scaled by the Text size control).
+
+### Changed
+
+- The extension's controls now live **in the TV 2 player control bar**: a
+  settings button sits to the left of the subtitle/fullscreen buttons and opens
+  the Settings menu as a popover anchored to the video's bottom-right corner. The
+  **"no → en" status indicator** sits just to the left of that button.
+- The floating subtitle window is now a simpler panel — just the draggable title
+  bar and the subtitle list — since every control moved into the player-bar
+  settings menu. In **Single line (TV2)** view the window is hidden entirely.
+
 ## [0.4.1] - 2026-07-24
 
 ### Changed
