@@ -19,6 +19,7 @@ import {
   setSingleRefreshHandler,
 } from "./native-subtitles";
 import { enqueueTranslate, getTranslation } from "./translator";
+import { readDisplayedCaption } from "./dom-subtitles";
 import { t } from "./i18n";
 
 export function setStatus(text: string): void {
@@ -94,12 +95,40 @@ function capLine(cls: string, inner: string): string {
   return `<span class="nsr-cap-line"><span class="${cls}">${inner}</span></span>`;
 }
 
-function renderSingleModeNative(): void {
-  const now = state.video?.currentTime ?? 0;
-  const active = findActiveIndex(now);
-  const cue = active >= 0 ? (state.cues[active] as VTTCue) : null;
-  const showing = !!cue && now >= cue.startTime && now <= cue.endTime;
+const normKey = (s: string): string => s.replace(/\s+/g, "").toLowerCase();
 
+/**
+ * Resolve the cue index for the caption TV 2 is painting right now, matching by
+ * TEXT rather than time. TTML cues sit on TV 2's DASH timeline and only line up
+ * with `video.currentTime` after calibration locks (which needs a seek/repaint),
+ * so a time search returns nothing on autoplay. Matching the live on-screen text
+ * to a cue gives us the right entry immediately — and its index drives the
+ * translation lookup. Returns -1 when no cue matches yet.
+ */
+function cueIndexForDisplayed(displayed: string): number {
+  const key = normKey(displayed);
+  if (!key) return -1;
+  // Prefer the display-anchored cue (the scraper already disambiguated repeats).
+  if (state.activeCue && normKey(cueText(state.activeCue as VTTCue)) === key) {
+    const i = state.cues.indexOf(state.activeCue as VTTCue);
+    if (i >= 0) return i;
+  }
+  const now = state.video?.currentTime ?? 0;
+  let best = -1;
+  let bestErr = Infinity;
+  for (let i = 0; i < state.cues.length; i++) {
+    const c = state.cues[i] as VTTCue;
+    if (normKey(cueText(c)) !== key) continue;
+    const err = Math.abs(c.startTime - now);
+    if (err < bestErr) {
+      bestErr = err;
+      best = i;
+    }
+  }
+  return best;
+}
+
+function renderSingleModeNative(): void {
   // Translation off / Original → let TV 2 render its own caption untouched.
   if (!isTranslationActive()) {
     clearNativeCaptionOverride();
@@ -114,19 +143,30 @@ function renderSingleModeNative(): void {
   // TV 2's text stays hidden throughout, so there is no flash.
   setNativeCueHidden(true);
 
-  if (!showing || !cue) {
+  // Drive the overlay from the caption TV 2 is actually painting right now, not
+  // from the cue list's time window: on autoplay the TTML timeline is not yet
+  // calibrated to the video clock, so a time search shows nothing until a seek.
+  // The live scraped text is always correct, so the styled line appears at once.
+  const displayed = readDisplayedCaption();
+  if (!displayed) {
     setNativeCaptionOverride(""); // in the gap: suppressed, nothing shown
     return;
   }
 
+  const active = cueIndexForDisplayed(displayed);
+
   // Pre-translate the active cue and the next few so the translation is ready
   // before each cue appears — removes the "original shows first, translation
   // pops in" flash for the common case.
-  const lookahead = Math.min(state.cues.length, active + 1 + SINGLE_PREFETCH);
-  for (let i = active; i < lookahead; i++) enqueueTranslate(i);
+  if (active >= 0) {
+    const lookahead = Math.min(state.cues.length, active + 1 + SINGLE_PREFETCH);
+    for (let i = active; i < lookahead; i++) enqueueTranslate(i);
+  }
 
-  const tr = getTranslation(active);
-  const original = cueText(cue);
+  // Fall back to the live scraped text as the original when no cue matches yet
+  // (TTML not delivered), so the caption is never blank on autoplay.
+  const original = active >= 0 ? cueText(state.cues[active] as VTTCue) : displayed;
+  const tr = active >= 0 ? getTranslation(active) : undefined;
   const origHtml = escapeHtml(original).replace(/\n/g, "<br/>");
   const transReady = tr?.state === "done";
   const transHtml = transReady ? escapeHtml(tr!.text).replace(/\n/g, "<br/>") : "";

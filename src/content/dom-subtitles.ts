@@ -72,6 +72,16 @@ function readRenderedText(): string {
   return lines.join("\n");
 }
 
+/**
+ * The caption TV 2 is painting right now ("" when none). Single mode renders from
+ * this live signal rather than the cue list's (possibly not-yet-calibrated) time
+ * window, so the styled/translated line appears immediately on autoplay instead
+ * of only after a seek forces the DASH->video time offset to calibrate.
+ */
+export function readDisplayedCaption(): string {
+  return readRenderedText();
+}
+
 function sample(): void {
   if (!video) return;
   const now = video.currentTime;
