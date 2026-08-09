@@ -6,6 +6,7 @@
 
 import {
   DisplayMode,
+  ViewMode,
   FONT,
   LANGS,
   OVERLAY_ID,
@@ -19,21 +20,22 @@ import {
 import {
   applyPlaybackRate,
   detectSourceLang,
+  isTranslationActive,
   setDeeplApiKey,
   setDisplayMode,
+  setViewMode,
   setFontSize,
   setPlaybackRate,
   setTargetLang,
   setTranslator,
   settings,
   state,
-  ui,
 } from "./state";
 import { readStorage, writeStorage } from "./utils";
 import { invalidateRender, render, updateStatus } from "./renderer";
 import { clearTranslationCache, onTranslationConfigChanged } from "./translator";
-import { applyNativeSubtitleVisibility } from "./native-subtitles";
 import { getUiLang, onUiLangChange, setUiLang, t } from "./i18n";
+import { applyNativeSubtitleVisibility } from "./native-subtitles";
 
 declare const chrome: any;
 
@@ -59,27 +61,26 @@ const CONTACT_EMAIL = "hamidkeshavarz68@gmail.com";
 export const overlay = document.createElement("div");
 overlay.id = OVERLAY_ID;
 overlay.innerHTML = `
-  <div class="nsr-header">
-    <span class="nsr-title">${ICON_URL ? `<img class="nsr-icon" src="${ICON_URL}" alt="" />` : "📜"} TV2 Subtitle Studio</span>
-    <span class="nsr-status">waiting…</span>
-    <span class="nsr-actions">
-      <span class="nsr-group nsr-group-settings">
-        <button class="nsr-btn nsr-btn-text" data-act="settings" title="Settings" aria-label="Settings">Settings</button>
-      </span>
-    </span>
-    <span class="nsr-group nsr-group-toggle">
-      <button class="nsr-btn nsr-btn-text" data-act="toggle" title="Hide subtitle list">Hide</button>
-    </span>
+  <div class="nsr-header" title="Drag to move">
+    ${ICON_URL ? `<img class="nsr-icon" src="${ICON_URL}" alt="" />` : "📜"}
+    <span class="nsr-title">TV2 Subtitle Studio</span>
   </div>
   <div class="nsr-settings" hidden>
     <div class="nsr-settings-title-row"><div class="nsr-settings-title" data-i18n="settings_heading">Settings</div><button class="nsr-settings-close" type="button" title="Close" aria-label="Close">×</button></div>
+    <label class="nsr-settings-row">
+      <span data-i18n="setting_view_mode">Subtitle view</span>
+      <select class="nsr-sel" data-act="view-mode" title="Subtitle view">
+        <option value="rolling">Rolling list</option>
+        <option value="single">Single line (TV2)</option>
+      </select>
+    </label>
     <label class="nsr-settings-row">
       <span data-i18n="setting_ui_language">Menu language</span>
       <select class="nsr-sel" data-act="set-uilang">
         ${UI_LANGS.map((l) => `<option value="${l.code}">${l.name}</option>`).join("")}
       </select>
     </label>
-    <div class="nsr-settings-row">
+    <div class="nsr-settings-row" data-row="font-size">
       <span data-i18n="setting_font_size">Text size</span>
       <span class="nsr-group nsr-group-font">
         <button class="nsr-btn" type="button" data-act="font-down" title="Smaller text">A−</button>
@@ -151,10 +152,24 @@ overlay.innerHTML = `
 // The overlay is only inserted into the DOM on video pages (see index.ts).
 
 export const listEl = overlay.querySelector(".nsr-list") as HTMLDivElement;
-export const statusEl = overlay.querySelector(".nsr-status") as HTMLSpanElement;
-const bodyEl = overlay.querySelector(".nsr-body") as HTMLDivElement;
+// The "no → en" status indicator lives to the left of our button in the TV 2
+// player control bar (player-controls.ts inserts it there). It is a standalone
+// element so it can sit outside the overlay; renderer.ts writes its text.
+export const statusEl = document.createElement("span");
+statusEl.className = "nsr-status nsr-player-status";
+statusEl.textContent = "waiting…";
 const footEl = overlay.querySelector(".nsr-foot") as HTMLDivElement;
 const settingsPanel = overlay.querySelector(".nsr-settings") as HTMLDivElement;
+
+// The settings menu lives in a standalone, fixed-position popover so it can be
+// anchored to the button injected into the TV 2 player's control bar (bottom-
+// right of the video) instead of being clipped inside the subtitle overlay. The
+// panel node is moved into this host at the end of the module, after all the
+// init-time `overlay.querySelector` lookups have resolved against it while it
+// still lived inside the overlay.
+export const settingsHost = document.createElement("div");
+settingsHost.className = "nsr-settings-host";
+settingsHost.hidden = true;
 
 // ---------- Fullscreen handling ----------
 // In fullscreen only the fullscreen element's subtree renders, so reparent the
@@ -166,11 +181,15 @@ export function syncFullscreenParent(): void {
   if (overlay.parentElement !== target) {
     target.appendChild(overlay);
   }
+  if (settingsHost.parentElement !== target) {
+    target.appendChild(settingsHost);
+  }
+  // Positioning is anchored to the (per-player) button, which is torn down and
+  // rebuilt across fullscreen transitions, so drop any open popover.
+  if (!settingsHost.hidden) closeSettings();
 }
 document.addEventListener("fullscreenchange", syncFullscreenParent);
 document.addEventListener("webkitfullscreenchange", syncFullscreenParent as EventListener);
-
-let savedExpandedHeight = "";
 
 // ---------- Font size ----------
 function renderFontSize(): void {
@@ -184,10 +203,12 @@ renderFontSize();
 overlay.querySelector('button[data-act="font-up"]')?.addEventListener("click", () => {
   setFontSize(settings.fontSize + FONT.step);
   renderFontSize();
+  render(); // also resize the single-mode on-video caption
 });
 overlay.querySelector('button[data-act="font-down"]')?.addEventListener("click", () => {
   setFontSize(settings.fontSize - FONT.step);
   renderFontSize();
+  render();
 });
 
 // ---------- Window size (persisted) ----------
@@ -349,6 +370,7 @@ function defaultTargetLang(): string {
 
 langSel.addEventListener("change", () => {
   setTargetLang(langSel.value);
+  syncFontSizeRowVisibility();
   onTranslationConfigChanged();
 });
 modeSel.addEventListener("change", () => {
@@ -359,13 +381,55 @@ modeSel.addEventListener("change", () => {
     langSel.value = lang;
   }
   syncLangSelVisibility();
+  syncFontSizeRowVisibility();
+  applyNativeSubtitleVisibility();
   updateStatus();
   invalidateRender();
   render();
 });
 
+// ---------- View mode (rolling window vs. TV 2's native single line) ----------
+const viewSel = overlay.querySelector('select[data-act="view-mode"]') as HTMLSelectElement;
+viewSel.value = settings.viewMode;
+// Reflect the persisted mode immediately so the window starts hidden in single
+// mode (native captions are toggled on mount via applyNativeSubtitleVisibility).
+overlay.style.display = settings.viewMode === "single" ? "none" : "";
+
+// The "Text size" control resizes the rolling list, and in single mode it
+// resizes our injected caption — but our injected caption only exists when a
+// translation is shown. In single mode with "Original" (or translation off),
+// TV 2 renders its own caption and we can't resize it, so hide the control then.
+const fontSizeRow = overlay.querySelector('[data-row="font-size"]') as HTMLElement | null;
+function syncFontSizeRowVisibility(): void {
+  if (!fontSizeRow) return;
+  const usable = settings.viewMode !== "single" || isTranslationActive();
+  // A base CSS rule may set this row to display:flex; toggling [hidden] wouldn't
+  // win (equal specificity), so hide via inline style instead.
+  fontSizeRow.style.display = usable ? "" : "none";
+}
+syncFontSizeRowVisibility();
+
+/**
+ * Show/hide the extension's rolling window and TV 2's own captions to match the
+ * chosen view mode. In "single" mode the overlay window is hidden and TV 2's
+ * native single-line subtitles are shown; the player-bar button and this
+ * settings popover stay available so the user can switch back.
+ */
+export function applyViewMode(): void {
+  const single = settings.viewMode === "single";
+  overlay.style.display = single ? "none" : "";
+  syncFontSizeRowVisibility();
+  applyNativeSubtitleVisibility();
+  invalidateRender();
+  render();
+}
+
+viewSel.addEventListener("change", () => {
+  setViewMode(viewSel.value as ViewMode);
+  applyViewMode();
+});
+
 // ---------- Settings menu ----------
-const settingsBtn = overlay.querySelector('button[data-act="settings"]') as HTMLButtonElement;
 const uiLangSel = overlay.querySelector('select[data-act="set-uilang"]') as HTMLSelectElement;
 const translatorSel = overlay.querySelector('select[data-act="set-translator"]') as HTMLSelectElement;
 const deeplKeyRow = overlay.querySelector('.nsr-row-deepl-key') as HTMLDivElement;
@@ -381,30 +445,83 @@ function syncDeeplKeyVisibility(): void {
 }
 syncDeeplKeyVisibility();
 
-function setSettingsOpen(open: boolean): void {
-  settingsPanel.hidden = !open;
-  settingsBtn.classList.toggle("nsr-btn-active", open);
-}
-const isSettingsOpen = (): boolean => !settingsPanel.hidden;
+// The button injected into the player control bar (see player-controls.ts)
+// anchors the popover; `settingsAnchor` remembers it so we can clear its active
+// state and re-close cleanly on outside clicks.
+let settingsAnchor: HTMLElement | null = null;
 
-settingsBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  setSettingsOpen(settingsPanel.hidden);
-});
+function reparentSettingsHost(): void {
+  const target = (document.fullscreenElement as HTMLElement | null) ?? document.documentElement;
+  if (settingsHost.parentElement !== target) target.appendChild(settingsHost);
+}
+
+function positionSettingsHost(anchor: HTMLElement | null): void {
+  if (!anchor || !anchor.isConnected) {
+    // No/stale anchor → park it in the bottom-right corner of the viewport.
+    settingsHost.style.left = "auto";
+    settingsHost.style.top = "auto";
+    settingsHost.style.right = "16px";
+    settingsHost.style.bottom = "64px";
+    return;
+  }
+  settingsHost.style.right = "auto";
+  settingsHost.style.bottom = "auto";
+  const a = anchor.getBoundingClientRect();
+  const p = settingsHost.getBoundingClientRect();
+  const gap = 8;
+  let left = a.right - p.width; // right-align the popover to the button
+  let top = a.top - p.height - gap; // open upward (the button sits at the bottom)
+  if (top < 8) top = a.bottom + gap; // not enough room above → drop below
+  left = Math.max(8, Math.min(left, window.innerWidth - p.width - 8));
+  top = Math.max(8, Math.min(top, window.innerHeight - p.height - 8));
+  settingsHost.style.left = Math.round(left) + "px";
+  settingsHost.style.top = Math.round(top) + "px";
+}
+
+export function isSettingsOpen(): boolean {
+  return !settingsHost.hidden;
+}
+
+export function openSettings(anchor?: HTMLElement | null): void {
+  reparentSettingsHost();
+  settingsAnchor = anchor ?? null;
+  // Measure while invisible so the popover never flashes at a stale position.
+  settingsHost.style.visibility = "hidden";
+  settingsHost.hidden = false;
+  positionSettingsHost(settingsAnchor);
+  settingsHost.style.visibility = "";
+  if (settingsAnchor) settingsAnchor.classList.add("nsr-player-btn-active");
+}
+
+export function closeSettings(): void {
+  settingsHost.hidden = true;
+  if (settingsAnchor) settingsAnchor.classList.remove("nsr-player-btn-active");
+  settingsAnchor = null;
+}
+
+export function toggleSettings(anchor?: HTMLElement | null): void {
+  if (isSettingsOpen()) closeSettings();
+  else openSettings(anchor);
+}
+
 // Keep clicks inside the panel from bubbling to the document-level close.
 settingsPanel.addEventListener("click", (e) => e.stopPropagation());
 
-// Settings close button
+// Settings close button.
 const settingsCloseBtn = overlay.querySelector('.nsr-settings-close') as HTMLButtonElement;
 if (settingsCloseBtn) {
   settingsCloseBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    setSettingsOpen(false);
+    closeSettings();
   });
 }
 // Close when clicking anywhere else.
 document.addEventListener("click", () => {
-  if (isSettingsOpen()) setSettingsOpen(false);
+  if (isSettingsOpen()) closeSettings();
+});
+// Re-anchor on viewport changes so the popover keeps hugging the button.
+window.addEventListener("resize", () => {
+  if (isSettingsOpen()) positionSettingsHost(settingsAnchor);
 });
 
 uiLangSel.addEventListener("change", () => {
@@ -452,25 +569,23 @@ function applyI18n(): void {
   setOptionText(modeSel, "original", t("mode_original"));
   setOptionText(modeSel, "translated", t("mode_translated"));
   setOptionText(modeSel, "bilingual", t("mode_bilingual"));
+  viewSel.title = t("view_mode");
+  setOptionText(viewSel, "rolling", t("view_rolling"));
+  setOptionText(viewSel, "single", t("view_single"));
   speedSel.title = t("playback_speed");
 
   setTitle('button[data-act="font-down"]', t("font_smaller"));
   setTitle('button[data-act="font-up"]', t("font_larger"));
-  settingsBtn.title = t("settings_open");
-  settingsBtn.setAttribute("aria-label", t("settings_open"));
-  settingsBtn.textContent = t("settings_open");
-
-  // Collapse/expand button reflects current state.
-  toggleBtn.textContent = ui.isExpanded ? t("hide") : t("show");
-  toggleBtn.title = ui.isExpanded ? t("hide_title") : t("show_title");
 
   footEl.innerHTML = `<small>${t("tip")}</small>`;
 
   deeplKeyInput.placeholder = t("deepl_key_placeholder");
 
-  overlay.querySelectorAll<HTMLElement>("[data-i18n]").forEach((el) => {
-    const key = el.dataset.i18n as Parameters<typeof t>[0] | undefined;
-    if (key) el.textContent = t(key);
+  [overlay, settingsHost].forEach((root) => {
+    root.querySelectorAll<HTMLElement>("[data-i18n]").forEach((el) => {
+      const key = el.dataset.i18n as Parameters<typeof t>[0] | undefined;
+      if (key) el.textContent = t(key);
+    });
   });
 
   // Status line shows the localized "waiting…" until a track is known.
@@ -485,48 +600,12 @@ function setOptionText(sel: HTMLSelectElement, value: string, text: string): voi
   if (opt) opt.text = text;
 }
 function setTitle(selector: string, title: string): void {
-  const el = overlay.querySelector(selector) as HTMLElement | null;
+  const el = (overlay.querySelector(selector) || settingsHost.querySelector(selector)) as HTMLElement | null;
   if (el) el.title = title;
 }
 
-const toggleBtn = overlay.querySelector('button[data-act="toggle"]') as HTMLButtonElement;
-
 onUiLangChange(applyI18n);
 applyI18n();
-
-// ---------- Toolbar buttons (toggle / font) ----------
-function toggleExpanded(button: HTMLElement): void {
-  const collapsed = bodyEl.style.display === "none";
-  bodyEl.style.display = collapsed ? "" : "none";
-  const nowCollapsed = !collapsed;
-  ui.isExpanded = !nowCollapsed;
-  // Collapsed = header shows only the logo, name and the Show button.
-  overlay.classList.toggle("nsr-collapsed", nowCollapsed);
-
-  // Shrink to header-only when collapsed; restore previous height when expanded.
-  if (nowCollapsed) {
-    savedExpandedHeight = overlay.style.height || overlay.getBoundingClientRect().height + "px";
-    suppressSizeSave = true;
-    overlay.style.height = "auto";
-    overlay.style.minHeight = "0";
-  } else {
-    overlay.style.height = savedExpandedHeight || "";
-    overlay.style.minHeight = "";
-    self.setTimeout(() => { suppressSizeSave = false; }, 200);
-  }
-  button.textContent = nowCollapsed ? t("show") : t("hide");
-  button.title = nowCollapsed ? t("show_title") : t("hide_title");
-  applyNativeSubtitleVisibility();
-}
-
-overlay.addEventListener("click", (e) => {
-  const target = e.target as HTMLElement;
-  switch (target.dataset.act) {
-    case "toggle":
-      toggleExpanded(target);
-      break;
-  }
-});
 
 // ---------- Click-to-seek ----------
 listEl.addEventListener("click", (e) => {
@@ -572,3 +651,10 @@ function makeDraggable(el: HTMLElement, handle: HTMLElement): void {
 
 // Re-apply the persisted playback rate if/when a video is present.
 applyPlaybackRate();
+
+// Move the settings panel into its standalone popover host now that every
+// init-time `overlay.querySelector(...)` lookup above has resolved against it
+// while it still lived inside the overlay. From here on it renders as an
+// anchored popover (see openSettings / player-controls.ts).
+settingsPanel.hidden = false;
+settingsHost.appendChild(settingsPanel);

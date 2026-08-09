@@ -71,10 +71,6 @@
   flex-shrink: 0;
 }
 #tv2-sub-roller .nsr-group[hidden] { display: none; }
-/* Collapsed (Hide clicked): show only the logo, name and the Show button. */
-#tv2-sub-roller.nsr-collapsed .nsr-actions,
-#tv2-sub-roller.nsr-collapsed .nsr-status { display: none; }
-#tv2-sub-roller.nsr-collapsed .nsr-group-toggle { margin-left: auto; }
 
 /* Action toolbar: sits inline at wide widths, drops to its own full-width row
    at narrow widths (see container query below) so every control stays visible. */
@@ -92,17 +88,6 @@
   vertical-align: middle;
   border-radius: 3px;
   flex-shrink: 0;
-}
-#tv2-sub-roller .nsr-status {
-  flex: 1 1 auto;
-  font-size: 10px;
-  opacity: 0.7;
-  text-align: right;
-  margin-right: 2px;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* Narrow panel: move the Translation/Settings toolbar onto a second
@@ -432,4 +417,240 @@
   opacity: 0.6;
 }
 #tv2-sub-roller .nsr-foot[hidden] { display: none; }
+
+/* ==========================================================================
+   Settings popover (anchored to the button in the TV 2 player control bar).
+   The settings menu is moved out of the overlay into this standalone,
+   fixed-position host so it can float at the bottom-right of the video near the
+   native controls instead of being clipped inside the subtitle overlay. It
+   re-declares the controls it needs because the overlay-scoped rules above no
+   longer reach the panel once it lives here.
+   ========================================================================== */
+.nsr-settings-host {
+  position: fixed;
+  z-index: 2147483647;
+  color: #f5f5f7;
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+}
+.nsr-settings-host[hidden] { display: none; }
+
+.nsr-settings-host .nsr-settings {
+  box-sizing: border-box;
+  min-width: 220px;
+  max-width: min(92vw, 340px);
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 10px 12px;
+  background: #1d1d22;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nsr-settings-host .nsr-settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.nsr-settings-host .nsr-settings-row-col {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+.nsr-settings-host .nsr-settings-row-col[hidden] { display: none; }
+
+.nsr-settings-host .nsr-btn {
+  background: transparent;
+  color: #f5f5f7;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  min-width: 24px;
+  height: 24px;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+}
+.nsr-settings-host .nsr-btn:hover { background: rgba(255, 255, 255, 0.12); }
+.nsr-settings-host .nsr-btn-busy { opacity: 0.55; cursor: progress; pointer-events: none; }
+.nsr-settings-host .nsr-btn-text { min-width: 44px; font-size: 11px; font-weight: 500; white-space: nowrap; }
+
+.nsr-settings-host .nsr-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+.nsr-settings-host .nsr-group[hidden] { display: none; }
+
+.nsr-settings-host .nsr-sel {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f5f5f7;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  height: 24px;
+  padding: 0 4px;
+  font-size: 11px;
+  cursor: pointer;
+  max-width: 140px;
+  touch-action: manipulation;
+}
+.nsr-settings-host .nsr-sel option { background: #1d1d22; color: #f5f5f7; }
+
+.nsr-settings-host .nsr-input {
+  box-sizing: border-box;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f5f5f7;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  height: 26px;
+  padding: 0 6px;
+  font-size: 11px;
+  touch-action: manipulation;
+}
+.nsr-settings-host .nsr-input::placeholder { color: rgba(245, 245, 247, 0.4); }
+.nsr-settings-host .nsr-input:focus { outline: none; border-color: #6cb4ff; }
+
+.nsr-settings-host .nsr-settings-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+.nsr-settings-host .nsr-settings-title { font-weight: 600; font-size: 13px; }
+.nsr-settings-host .nsr-settings-close {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.3em;
+  cursor: pointer;
+  padding: 0 6px;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+.nsr-settings-host .nsr-settings-close:hover,
+.nsr-settings-host .nsr-settings-close:focus { background: rgba(255, 255, 255, 0.12); }
+
+.nsr-settings-host .nsr-settings-foot {
+  margin-top: 2px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+}
+.nsr-settings-host .nsr-settings-feedback { opacity: 0.8; }
+.nsr-settings-host .nsr-settings-links { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.nsr-settings-host .nsr-link { color: #6cb4ff; text-decoration: none; }
+.nsr-settings-host .nsr-link:hover { text-decoration: underline; }
+.nsr-settings-host .nsr-dot { opacity: 0.5; }
+.nsr-settings-host .nsr-settings-version { opacity: 0.55; font-size: 10px; text-align: right; }
+
+/* ==========================================================================
+   Settings button injected into the TV 2 player control bar.
+   It reuses TV 2's own control-button class for sizing/colour/hover/focus, so
+   these rules only add the marker + active state.
+   ========================================================================== */
+.nsr-player-btn-icon {
+  display: block;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 6px;
+  pointer-events: none;
+  object-fit: contain;
+}
+.nsr-player-btn-active { background-color: rgba(255, 255, 255, 0.18); }
+
+/* The "no → en" status indicator, sitting just to the left of our button in the
+   TV 2 player control bar. Styled to read clearly over the dark control bar. */
+.nsr-player-status {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  height: 1.5rem;
+  line-height: 1;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0.9;
+  padding: 0 6px;
+  pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+.nsr-player-status:empty { display: none; }
+
+/* ==========================================================================
+   Single-line TV 2 caption override (view mode = "Single line (TV2)").
+   TV 2's own on-video caption text is hidden non-destructively via global CSS
+   (see native-subtitles.ts) and we render our styled original / translated line
+   boxes in an overlay positioned over the same area.
+   ========================================================================== */
+.nsr-cap-root-rel { position: relative; }
+
+.nsr-cap-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.12em;
+  text-align: center;
+  pointer-events: none;
+  /* Sit above TV 2's control bar so the caption is never covered when it does
+     overlap; while the controls are visible we also lift it (see below). */
+  z-index: 2147483000;
+  transition: bottom 0.15s ease;
+}
+/* While TV 2's controls are visible, lift the caption just enough to clear the
+   control bar; it drops back to the normal spot when the controls hide. */
+.nsr-cap-overlay.nsr-cap-lift {
+  bottom: 20%;
+}
+.nsr-cap-overlay .nsr-cap-line {
+  display: block;
+  text-align: center;
+  line-height: 1.25;
+}
+.nsr-cap-overlay .nsr-cap-orig,
+.nsr-cap-overlay .nsr-cap-trans {
+  display: inline-block;
+  margin: 0;
+  padding: 0.02em 0.45em;
+  border-radius: 0.14em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  white-space: pre-line;
+  color: #fff;
+  font-weight: 400;
+}
+/* Original: the source language, on a neutral dark box. */
+.nsr-cap-overlay .nsr-cap-orig { background: rgba(0, 0, 0, 0.62); }
+/* Translation: the main line, on a box tinted slightly blue so it's clearly
+   distinct from the original. */
+.nsr-cap-overlay .nsr-cap-trans { background: rgba(12, 28, 54, 0.86); }
+/* Reserved-but-not-yet-ready translation line: keeps its height so revealing
+   the text later doesn't shift the original. */
+.nsr-cap-overlay .nsr-cap-pending { visibility: hidden; }
+.nsr-cap-overlay .nsr-cap-warn {
+  background: rgba(0, 0, 0, 0.62);
+  color: #ffcc55;
+}
 

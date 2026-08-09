@@ -12,6 +12,12 @@ import { ROLL } from "./config";
 import { detectSourceLang, isTranslationActive, settings, state } from "./state";
 import { cueText, escapeHtml, formatTime } from "./utils";
 import { listEl, statusEl, syncFooterTip } from "./overlay";
+import {
+  setNativeCueHidden,
+  setNativeCaptionOverride,
+  clearNativeCaptionOverride,
+  setSingleRefreshHandler,
+} from "./native-subtitles";
 import { enqueueTranslate, getTranslation } from "./translator";
 import { t } from "./i18n";
 
@@ -73,7 +79,92 @@ function cueInnerHtml(idx: number, original: string): string {
   );
 }
 
+/**
+ * Single-mode display: TV 2 Play's own native single-line caption is used.
+ *  - Original (or translation off): leave TV 2's caption exactly as it renders.
+ *  - Translated: once ready, show a single translated line in the same spot.
+ *  - Bilingual: show two styled lines — original on top, translation below. The
+ *    translation line reserves its space immediately and is revealed in place
+ *    once ready, so the original never jumps. Upcoming cues are pre-translated so
+ *    the translation is usually ready before its cue even appears.
+ */
+const SINGLE_PREFETCH = 4;
+
+function capLine(cls: string, inner: string): string {
+  return `<span class="nsr-cap-line"><span class="${cls}">${inner}</span></span>`;
+}
+
+function renderSingleModeNative(): void {
+  const now = state.video?.currentTime ?? 0;
+  const active = findActiveIndex(now);
+  const cue = active >= 0 ? (state.cues[active] as VTTCue) : null;
+  const showing = !!cue && now >= cue.startTime && now <= cue.endTime;
+
+  // Translation off / Original → let TV 2 render its own caption untouched.
+  if (!isTranslationActive()) {
+    clearNativeCaptionOverride();
+    setNativeCueHidden(false);
+    return;
+  }
+
+  // Translation active: keep TV 2's native caption suppressed for the whole
+  // duration (not just when we have a cue). Removing the suppression during the
+  // gap between cues made TV 2's original flash for a frame when the next cue
+  // painted, before our overlay caught up. Now only the overlay CONTENT changes;
+  // TV 2's text stays hidden throughout, so there is no flash.
+  setNativeCueHidden(true);
+
+  if (!showing || !cue) {
+    setNativeCaptionOverride(""); // in the gap: suppressed, nothing shown
+    return;
+  }
+
+  // Pre-translate the active cue and the next few so the translation is ready
+  // before each cue appears — removes the "original shows first, translation
+  // pops in" flash for the common case.
+  const lookahead = Math.min(state.cues.length, active + 1 + SINGLE_PREFETCH);
+  for (let i = active; i < lookahead; i++) enqueueTranslate(i);
+
+  const tr = getTranslation(active);
+  const original = cueText(cue);
+  const origHtml = escapeHtml(original).replace(/\n/g, "<br/>");
+  const transReady = tr?.state === "done";
+  const transHtml = transReady ? escapeHtml(tr!.text).replace(/\n/g, "<br/>") : "";
+
+  if (settings.displayMode === "translated") {
+    // Single translated line. Until the translation resolves, show the original
+    // in our own overlay (same position/style) so the caption is never blank and
+    // TV 2's native text never flashes; the text swaps to the translation in
+    // place once ready.
+    const inner = transReady ? transHtml : origHtml;
+    setNativeCaptionOverride(capLine("nsr-cap-trans", inner));
+    return;
+  }
+
+  // Bilingual: always two lines so the layout never reflows when the
+  // translation arrives.
+  const origLine = capLine("nsr-cap-orig", origHtml);
+  let transLine: string;
+  if (transReady) {
+    transLine = capLine("nsr-cap-trans", transHtml);
+  } else if (tr?.state === "error") {
+    transLine = capLine("nsr-cap-trans nsr-cap-warn", "⚠");
+  } else {
+    // Reserve the translation line's height (hidden) so it can be filled in
+    // place without shifting the original upward.
+    transLine = capLine("nsr-cap-trans nsr-cap-pending", "…");
+  }
+  setNativeCaptionOverride(origLine + transLine);
+}
+
 export function render(): void {
+  // In single mode TV 2's own captions are shown (Original) or replaced by our
+  // single line (Translated / Bilingual); the rolling overlay window is hidden.
+  if (settings.viewMode === "single") {
+    renderSingleModeNative();
+    return;
+  }
+
   syncFooterTip();
   if (!state.cues.length) {
     listEl.innerHTML = `<div class="nsr-empty">${t("empty")}</div>`;
@@ -149,3 +240,8 @@ export function render(): void {
     (listEl as any).__nsrActive = active;
   }
 }
+
+// Let native-subtitles re-drive single-mode rendering the instant the player
+// repaints its caption (a new cue), so the styled/translated line appears
+// without lag.
+setSingleRefreshHandler(render);

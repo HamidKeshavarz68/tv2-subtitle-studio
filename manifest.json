@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "TV2 Subtitle Studio",
-  "version": "0.4.1",
-  "description": "Loads every TV 2 Play subtitle into a scrolling, time-synced overlay you can click to seek and translate.",
+  "version": "0.5.0",
+  "description": "Learn Norwegian while watching TV 2 Play: click-to-seek subtitles, live translation, and bilingual on-video captions.",
   "icons": {
     "16": "public/icons/icon-16.png",
     "32": "public/icons/icon-32.png",
