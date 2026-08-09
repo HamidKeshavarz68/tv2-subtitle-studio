@@ -515,9 +515,12 @@ if (settingsCloseBtn) {
     closeSettings();
   });
 }
-// Close when clicking anywhere else.
-document.addEventListener("click", () => {
-  if (isSettingsOpen()) closeSettings();
+// Close when clicking anywhere outside the popover and its anchoring button.
+document.addEventListener("click", (e) => {
+  if (!isSettingsOpen()) return;
+  const target = e.target as Node | null;
+  if (target && (settingsHost.contains(target) || settingsAnchor?.contains(target))) return;
+  closeSettings();
 });
 // Re-anchor on viewport changes so the popover keeps hugging the button.
 window.addEventListener("resize", () => {
