@@ -565,7 +565,18 @@
    Settings button injected into the TV 2 player control bar.
    It reuses TV 2's own control-button class for sizing/colour/hover/focus, so
    these rules only add the marker + active state.
+
+   NB: `[data-testid="player-controls"]` is `pointer-events: none` (TV 2 only
+   re-enables pointer events per native button, via a wrapper, while the controls
+   are visible). Our button is a bare sibling, so we must re-enable pointer events
+   ourselves or it stays visible but unclickable. We fade it in/out in sync with
+   the controls from player-controls.ts by toggling `.nsr-ctrl-hidden`.
    ========================================================================== */
+.nsr-player-btn {
+  pointer-events: auto !important;
+  opacity: 1;
+  transition: opacity 300ms ease;
+}
 .nsr-player-btn-icon {
   display: block;
   width: 1.5rem;
@@ -575,6 +586,9 @@
   object-fit: contain;
 }
 .nsr-player-btn-active { background-color: rgba(255, 255, 255, 0.18); }
+
+/* Hidden state, mirrored from TV 2's controls-visible flag. */
+.nsr-ctrl-hidden { opacity: 0 !important; pointer-events: none !important; }
 
 /* The "no → en" status indicator, sitting just to the left of our button in the
    TV 2 player control bar. Styled to read clearly over the dark control bar. */
@@ -592,6 +606,7 @@
   padding: 0 6px;
   pointer-events: none;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  transition: opacity 300ms ease;
 }
 .nsr-player-status:empty { display: none; }
 

@@ -29,6 +29,8 @@ import { onUiLangChange, t } from "./i18n";
 declare const chrome: any;
 
 const BTN_CLASS = "nsr-player-btn";
+// Toggled on our button + status to mirror TV 2's controls-visible fade.
+const HIDDEN_CLASS = "nsr-ctrl-hidden";
 
 // The extension's own icon (declared in web_accessible_resources).
 const ICON_URL = (() => {
@@ -164,6 +166,8 @@ export function injectSettingsButton(): void {
       g.group.insertBefore(button, before);
     }
     ensureStatusBeside(button);
+    ensureVisibilitySync();
+    syncControlsVisibility();
     return;
   }
 
@@ -171,6 +175,7 @@ export function injectSettingsButton(): void {
   // temporary fallback spot; a later call will re-anchor it correctly.
   if (button && button.isConnected) {
     ensureStatusBeside(button);
+    syncControlsVisibility();
     return;
   }
   const target = fallbackTarget();
@@ -178,6 +183,39 @@ export function injectSettingsButton(): void {
   button = createButton(target.styleSource);
   target.parent.insertBefore(button, target.before);
   ensureStatusBeside(button);
+  ensureVisibilitySync();
+  syncControlsVisibility();
+}
+
+/**
+ * Is TV 2's control bar currently interactive? The whole `player-controls` layer
+ * is `pointer-events: none`; TV 2 re-enables pointer events on each native button
+ * (via its wrapper) only while the controls are shown, so a native button
+ * computing to `pointer-events: auto` means the controls are visible.
+ */
+function controlsVisible(): boolean {
+  const ref =
+    document.querySelector<HTMLElement>(TV2.fullscreenButton) ??
+    document.querySelector<HTMLElement>(TV2.subtitlesButton);
+  if (!ref) return false;
+  return getComputedStyle(ref).pointerEvents !== "none";
+}
+
+/**
+ * Fade our button + status in/out together with TV 2's controls. Kept visible
+ * while the settings popover is open so it never yanks out from under the user.
+ */
+function syncControlsVisibility(): void {
+  if (!button) return;
+  const hidden = !(controlsVisible() || isSettingsOpen());
+  button.classList.toggle(HIDDEN_CLASS, hidden);
+  statusEl.classList.toggle(HIDDEN_CLASS, hidden);
+}
+
+let visTimer: ReturnType<typeof setInterval> | null = null;
+function ensureVisibilitySync(): void {
+  if (visTimer != null) return;
+  visTimer = setInterval(syncControlsVisibility, 150);
 }
 
 /** Keep the "no → en" status indicator directly to the left of our button. */
