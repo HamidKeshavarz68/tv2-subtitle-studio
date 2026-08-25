@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file. The format
 is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.2] - 2026-08-25
+
+### Changed
+
+- The settings menu now scales automatically with the effective viewport,
+  remaining compact through 1080p while growing proportionally on 1440p and 4K
+  displays. Its size and position update across resize, orientation and
+  fullscreen changes without adding a user setting.
+- Content-script modules are now organized by domain, with a shared typed
+  translation contract and stricter persisted-setting validation.
+
+### Fixed
+
+- Text-track listeners and player-control visibility timers are now released
+  when their player instance is detached.
+
 ## [0.5.1] - 2026-08-10
 
 ### Changed
