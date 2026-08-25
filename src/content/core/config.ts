@@ -2,7 +2,12 @@
  * Shared configuration, constants and types for the content script.
  */
 
-export type DisplayMode = "original" | "translated" | "bilingual";
+import { CUE_SEPARATOR, TranslatorProvider } from "../../shared/translation";
+
+export type { TranslatorProvider } from "../../shared/translation";
+
+export const DISPLAY_MODES = ["original", "translated", "bilingual"] as const;
+export type DisplayMode = (typeof DISPLAY_MODES)[number];
 
 /**
  * How subtitles are shown:
@@ -10,13 +15,11 @@ export type DisplayMode = "original" | "translated" | "bilingual";
  *  - "single": the extension window is hidden and TV 2 Play's own native
  *    single-line subtitle UI is used instead.
  */
-export type ViewMode = "rolling" | "single";
+export const VIEW_MODES = ["rolling", "single"] as const;
+export type ViewMode = (typeof VIEW_MODES)[number];
 
 export type TranslationState = "pending" | "done" | "error";
 export type UiLang = "en" | "no";
-
-/** Available translation back-ends. */
-export type TranslatorProvider = "google" | "deepl";
 
 export const OVERLAY_ID = "tv2-sub-roller";
 
@@ -62,7 +65,7 @@ export const ROLL = { past: 3, future: 12 } as const;
 export const TRANSLATE = {
   // Separator joins multiple cues into a single request; unlikely to appear in
   // subtitles and tends to survive translation.
-  separator: "\n\n@@@\n\n",
+  separator: CUE_SEPARATOR,
   // Coalescing window for batching enqueued cues into one request.
   coalesceMs: 30,
   // Minimum gap between successive batch requests.
@@ -135,3 +138,19 @@ export const LANGS: { code: string; name: string }[] = [
   { code: "ja", name: "日本語" },
   { code: "ko", name: "한국어" },
 ];
+
+function isOneOf<T extends string>(
+  values: readonly T[],
+  value: string | null
+): value is T {
+  return value !== null && (values as readonly string[]).includes(value);
+}
+
+export const isDisplayMode = (value: string | null): value is DisplayMode =>
+  isOneOf(DISPLAY_MODES, value);
+
+export const isViewMode = (value: string | null): value is ViewMode =>
+  isOneOf(VIEW_MODES, value);
+
+export const isTargetLang = (value: string | null): value is string =>
+  value !== null && LANGS.some((language) => language.code === value);

@@ -10,7 +10,7 @@
  * fullscreen element automatically since it is a child of the overlay.
  */
 
-import { OVERLAY_ID } from "./config";
+import { OVERLAY_ID } from "../core/config";
 
 const TOAST_ID = OVERLAY_ID + "-toast";
 

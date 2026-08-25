@@ -22,8 +22,8 @@
  *    overlay in the player's video-sized box.
  */
 
-import { FONT, TV2 } from "./config";
-import { settings, state } from "./state";
+import { FONT, TV2 } from "../core/config";
+import { settings, state } from "../core/state";
 
 const CUE_HIDE_STYLE_ID = "nsr-native-cue-hide";
 

@@ -7,14 +7,18 @@
  * split back apart), with a per-pair LRU-ish cache so seeks/repeats are free.
  */
 
-import { TRANSLATE, TranslationState } from "./config";
-import { detectSourceLang, isTranslationActive, settings, state } from "./state";
-import { cueText, normalizeWhitespace } from "./utils";
-import { invalidateRender, render, updateStatus } from "./renderer";
-import { showToast } from "./toast";
-import { t } from "./i18n";
-
-declare const chrome: any;
+import { TRANSLATE, TranslationState } from "../core/config";
+import { detectSourceLang, isTranslationActive, settings, state } from "../core/state";
+import { cueText, normalizeWhitespace } from "../core/utils";
+import { invalidateRender, render, updateStatus } from "../ui/renderer";
+import { showToast } from "../ui/toast";
+import { t } from "../core/i18n";
+import {
+  isTranslateResponse,
+  TRANSLATE_MESSAGE_TYPE,
+  TranslatePayload,
+  TranslateRequest,
+} from "../../shared/translation";
 
 interface TranslationEntry {
   state: TranslationState;
@@ -45,27 +49,24 @@ export function clearTranslationCache(): void {
   cache.clear();
 }
 
-interface TranslatePayload {
-  provider?: string;
-  apiKey?: string;
-  text: string;
-  source?: string;
-  target: string;
-}
-
 /** Proxy a translate request through the background service worker. */
 function proxyTranslate(payload: TranslatePayload): Promise<string> {
   return new Promise((resolve, reject) => {
     try {
+      const request: TranslateRequest = {
+        type: TRANSLATE_MESSAGE_TYPE,
+        ...payload,
+      };
       chrome.runtime.sendMessage(
-        { type: "translate", ...payload },
-        (resp: any) => {
+        request,
+        (response) => {
           const err = chrome.runtime.lastError;
           if (err) return reject(new Error(err.message || "runtime error"));
-          if (!resp || !resp.ok) {
-            return reject(new Error((resp && resp.error) || "translate failed"));
+          if (!isTranslateResponse(response)) {
+            return reject(new Error("invalid translate response"));
           }
-          resolve(String(resp.text || ""));
+          if (!response.ok) return reject(new Error(response.error));
+          resolve(response.text);
         }
       );
     } catch (e) {

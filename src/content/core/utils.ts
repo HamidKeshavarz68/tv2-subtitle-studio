@@ -1,11 +1,14 @@
 /**
- * Small, pure helpers shared across the content script modules.
+ * Small, pure helpers shared across content-script domains.
  */
 
 export const stripHtml = (s: string): string => s.replace(/<[^>]+>/g, "");
 
 export const normalizeWhitespace = (s: string): string =>
   s.replace(/\s+/g, " ").trim();
+
+export const normalizeCueKey = (s: string): string =>
+  s.replace(/\s+/g, "").toLowerCase();
 
 export const isSubtitleTrack = (t: TextTrack): boolean =>
   t.kind === "subtitles" || t.kind === "captions";
@@ -28,6 +31,15 @@ export function writeStorage(key: string, value: string): void {
   } catch {
     // Storage may be unavailable (private mode / quota); ignore.
   }
+}
+
+export function queryRequired<T extends Element>(
+  root: ParentNode,
+  selector: string
+): T {
+  const element = root.querySelector<T>(selector);
+  if (!element) throw new Error(`Missing required element: ${selector}`);
+  return element;
 }
 
 export const clamp = (n: number, min: number, max: number): number =>

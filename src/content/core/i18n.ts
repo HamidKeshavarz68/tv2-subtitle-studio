@@ -1,5 +1,5 @@
 /**
- * Tiny i18n layer for the overlay's own UI strings.
+ * Core i18n layer for the overlay's own UI strings.
  *
  * Holds the current menu language and a per-locale message table. Modules call
  * `t(key)` to read a string; `setUiLang()` switches the active locale. The

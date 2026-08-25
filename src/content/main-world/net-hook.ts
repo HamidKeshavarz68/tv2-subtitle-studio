@@ -1,5 +1,5 @@
 /**
- * MAIN-world network hook for TV 2 Play subtitle capture.
+ * MAIN-world network bridge for TV 2 Play subtitle capture.
  *
  * This runs in the PAGE's JavaScript world (manifest `"world": "MAIN"`), not the
  * isolated content-script world, which is the only place it can observe the
