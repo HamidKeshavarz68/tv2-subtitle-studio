@@ -15,9 +15,10 @@
  * render / translate pipeline.
  */
 
-import { state } from "./state";
-import { updateStatus, invalidateRender, render } from "./renderer";
-import { onTranslationConfigChanged } from "./translator";
+import { state } from "../core/state";
+import { updateStatus, invalidateRender, render } from "../ui/renderer";
+import { onTranslationConfigChanged } from "../translation/translator";
+import { normalizeCueKey } from "../core/utils";
 
 /** Two cues with equal text starting within this window are the same cue. */
 const DEDUP_START_TOLERANCE = 0.6;
@@ -51,8 +52,6 @@ let ttmlOffset = 0;
 let offsetLocked = false;
 const offsetSamples: number[] = [];
 const textIndex = new Map<string, number[]>();
-
-const normKey = (s: string): string => s.replace(/\s+/g, "").toLowerCase();
 
 /** Console debug gated behind `localStorage.tv2sub_debug = "1"`. */
 export function subDebug(): boolean {
@@ -161,7 +160,7 @@ export function activateTtml(): void {
 
 /** Record a TTML cue's text -> raw begin time (for offset calibration). */
 function registerTtmlText(text: string, rawStart: number): void {
-  const key = normKey(text);
+  const key = normalizeCueKey(text);
   if (!key) return;
   let arr = textIndex.get(key);
   if (!arr) {
@@ -178,8 +177,10 @@ function registerTtmlText(text: string, rawStart: number): void {
  * presentation-time offset inference.
  */
 export function anchorFromDisplay(now: number, displayedText: string): void {
-  const key = normKey(displayedText);
-  const matches = cues.filter((cue) => cue.id === "ttml" && normKey(cue.text) === key);
+  const key = normalizeCueKey(displayedText);
+  const matches = cues.filter(
+    (cue) => cue.id === "ttml" && normalizeCueKey(cue.text) === key
+  );
   if (!matches.length) return;
 
   let match = matches[0];
@@ -211,7 +212,7 @@ export function anchorFromDisplay(now: number, displayedText: string): void {
  */
 export function calibrateFromDisplay(now: number, displayedText: string): void {
   if (!ttmlActive) return;
-  const key = normKey(displayedText);
+  const key = normalizeCueKey(displayedText);
   anchorFromDisplay(now, displayedText);
   const starts = textIndex.get(key);
   if (!starts || !starts.length) {

@@ -14,7 +14,7 @@
  * unlike DOM scraping which only ever sees the caption currently on screen.
  */
 
-import { normalizeWhitespace } from "./utils";
+import { normalizeWhitespace } from "../core/utils";
 import { upsertCue, publishCues, activateTtml, subDebug } from "./subtitle-store";
 
 let listening = false;

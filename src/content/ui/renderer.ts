@@ -8,19 +8,22 @@
  * states change, and the active line auto-scrolls to the centre.
  */
 
-import { ROLL } from "./config";
-import { detectSourceLang, isTranslationActive, settings, state } from "./state";
-import { cueText, escapeHtml, formatTime } from "./utils";
+import { ROLL } from "../core/config";
+import { detectSourceLang, isTranslationActive, settings, state } from "../core/state";
+import { cueText, escapeHtml, formatTime, normalizeCueKey } from "../core/utils";
 import { listEl, statusEl, syncFooterTip } from "./overlay";
 import {
   setNativeCueHidden,
   setNativeCaptionOverride,
   clearNativeCaptionOverride,
   setSingleRefreshHandler,
-} from "./native-subtitles";
-import { enqueueTranslate, getTranslation } from "./translator";
-import { readDisplayedCaption } from "./dom-subtitles";
-import { t } from "./i18n";
+} from "../subtitles/native-subtitles";
+import { enqueueTranslate, getTranslation } from "../translation/translator";
+import { readDisplayedCaption } from "../subtitles/dom-subtitles";
+import { t } from "../core/i18n";
+
+let renderSignature: string | null = null;
+let lastRenderedActive: number | undefined;
 
 export function setStatus(text: string): void {
   statusEl.textContent = text;
@@ -36,7 +39,7 @@ export function updateStatus(): void {
 
 /** Force the next render() to rebuild even if the window signature matches. */
 export function invalidateRender(): void {
-  (listEl as any).__nsrSig = null;
+  renderSignature = null;
 }
 
 /** Index of the last cue whose startTime ≤ t (binary search), or -1. */
@@ -95,8 +98,6 @@ function capLine(cls: string, inner: string): string {
   return `<span class="nsr-cap-line"><span class="${cls}">${inner}</span></span>`;
 }
 
-const normKey = (s: string): string => s.replace(/\s+/g, "").toLowerCase();
-
 /**
  * Resolve the cue index for the caption TV 2 is painting right now, matching by
  * TEXT rather than time. TTML cues sit on TV 2's DASH timeline and only line up
@@ -106,19 +107,19 @@ const normKey = (s: string): string => s.replace(/\s+/g, "").toLowerCase();
  * translation lookup. Returns -1 when no cue matches yet.
  */
 function cueIndexForDisplayed(displayed: string): number {
-  const key = normKey(displayed);
+  const key = normalizeCueKey(displayed);
   if (!key) return -1;
   // Prefer the display-anchored cue (the scraper already disambiguated repeats).
-  if (state.activeCue && normKey(cueText(state.activeCue as VTTCue)) === key) {
-    const i = state.cues.indexOf(state.activeCue as VTTCue);
+  if (state.activeCue && normalizeCueKey(cueText(state.activeCue)) === key) {
+    const i = state.cues.indexOf(state.activeCue);
     if (i >= 0) return i;
   }
   const now = state.video?.currentTime ?? 0;
   let best = -1;
   let bestErr = Infinity;
   for (let i = 0; i < state.cues.length; i++) {
-    const c = state.cues[i] as VTTCue;
-    if (normKey(cueText(c)) !== key) continue;
+    const c = state.cues[i];
+    if (normalizeCueKey(cueText(c)) !== key) continue;
     const err = Math.abs(c.startTime - now);
     if (err < bestErr) {
       bestErr = err;
@@ -165,7 +166,7 @@ function renderSingleModeNative(): void {
 
   // Fall back to the live scraped text as the original when no cue matches yet
   // (TTML not delivered), so the caption is never blank on autoplay.
-  const original = active >= 0 ? cueText(state.cues[active] as VTTCue) : displayed;
+  const original = active >= 0 ? cueText(state.cues[active]) : displayed;
   const tr = active >= 0 ? getTranslation(active) : undefined;
   const origHtml = escapeHtml(original).replace(/\n/g, "<br/>");
   const transReady = tr?.state === "done";
@@ -228,15 +229,15 @@ export function render(): void {
     }
   }
   const sig = `${start}|${end}|${active}|${settings.targetLang}|${settings.displayMode}|${trSig}`;
-  if ((listEl as any).__nsrSig === sig) return;
-  (listEl as any).__nsrSig = sig;
+  if (renderSignature === sig) return;
+  renderSignature = sig;
 
   const parts: string[] = [];
   for (let i = start; i < end; i++) {
-    const c = state.cues[i] as VTTCue;
+    const c = state.cues[i];
     // A cue is "past" only once the NEXT cue has started (or, for the last cue,
     // once its own endTime has passed) — keeps the active line lit through gaps.
-    const next = state.cues[i + 1] as VTTCue | undefined;
+    const next = state.cues[i + 1];
     const isPast = anchored >= 0
       ? i < active
       : next ? next.startTime <= now : c.endTime < now;
@@ -267,7 +268,7 @@ export function render(): void {
     //     original line doesn't move; new content extends downward.
     // Snap instantly on re-renders to avoid visible bobbing; only animate
     // when the active cue index actually changes (a true line transition).
-    const prevActive = (listEl as any).__nsrActive as number | undefined;
+    const prevActive = lastRenderedActive;
     const offsetFromTop = Math.round(listEl.clientHeight * 0.4);
     const target = Math.max(0, activeEl.offsetTop - offsetFromTop);
     if (prevActive === active) {
@@ -277,7 +278,7 @@ export function render(): void {
     } else {
       listEl.scrollTo({ top: target, behavior: "smooth" });
     }
-    (listEl as any).__nsrActive = active;
+    lastRenderedActive = active;
   }
 }
 

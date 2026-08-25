@@ -1,12 +1,23 @@
 /**
- * Shared application state and persisted settings.
+ * Core application state and persisted settings.
  *
  * A single source of truth that the other modules read and mutate. Settings are
  * backed by localStorage; helpers here own both the in-memory value and its
  * persistence so callers never have to touch storage directly.
  */
 
-import { DisplayMode, ViewMode, FONT, SPEED, STORAGE_KEYS, DEFAULT_TRANSLATOR, TranslatorProvider } from "./config";
+import {
+  DEFAULT_TRANSLATOR,
+  DisplayMode,
+  FONT,
+  isDisplayMode,
+  isTargetLang,
+  isViewMode,
+  SPEED,
+  STORAGE_KEYS,
+  TranslatorProvider,
+  ViewMode,
+} from "./config";
 import { clamp, readStorage, writeStorage } from "./utils";
 
 export interface AppState {
@@ -38,14 +49,29 @@ export interface Settings {
 }
 
 export const settings: Settings = {
-  targetLang: readStorage(STORAGE_KEYS.targetLang) || "off",
-  displayMode: (readStorage(STORAGE_KEYS.displayMode) as DisplayMode) || "original",
-  viewMode: readStorage(STORAGE_KEYS.viewMode) === "single" ? "single" : "rolling",
+  targetLang: readTargetLang(),
+  displayMode: readDisplayMode(),
+  viewMode: readViewMode(),
   fontSize: clampFont(parseInt(readStorage(STORAGE_KEYS.fontSize) || "", 10) || FONT.default),
   playbackRate: clampSpeed(parseFloat(readStorage(STORAGE_KEYS.playbackRate) || "") || SPEED.default),
   translator: readStorage(STORAGE_KEYS.translator) === "deepl" ? "deepl" : DEFAULT_TRANSLATOR,
   deeplApiKey: readStorage(STORAGE_KEYS.deeplApiKey) || "",
 };
+
+function readTargetLang(): string {
+  const value = readStorage(STORAGE_KEYS.targetLang);
+  return isTargetLang(value) ? value : "off";
+}
+
+function readDisplayMode(): DisplayMode {
+  const value = readStorage(STORAGE_KEYS.displayMode);
+  return isDisplayMode(value) ? value : "original";
+}
+
+function readViewMode(): ViewMode {
+  const value = readStorage(STORAGE_KEYS.viewMode);
+  return isViewMode(value) ? value : "rolling";
+}
 
 export function setTranslator(provider: TranslatorProvider): void {
   settings.translator = provider;

@@ -22,11 +22,9 @@
  * re-inject the button whenever it's gone.
  */
 
-import { TV2 } from "./config";
-import { closeSettings, isSettingsOpen, statusEl, toggleSettings } from "./overlay";
-import { onUiLangChange, t } from "./i18n";
-
-declare const chrome: any;
+import { TV2 } from "../core/config";
+import { closeSettings, isSettingsOpen, statusEl, toggleSettings } from "../ui/overlay";
+import { onUiLangChange, t } from "../core/i18n";
 
 const BTN_CLASS = "nsr-player-btn";
 // Toggled on our button + status to mirror TV 2's controls-visible fade.
@@ -218,6 +216,12 @@ function ensureVisibilitySync(): void {
   visTimer = setInterval(syncControlsVisibility, 150);
 }
 
+function stopVisibilitySync(): void {
+  if (visTimer === null) return;
+  clearInterval(visTimer);
+  visTimer = null;
+}
+
 /** Keep the "no → en" status indicator directly to the left of our button. */
 function ensureStatusBeside(btn: HTMLButtonElement): void {
   if (statusEl.nextElementSibling !== btn || statusEl.parentElement !== btn.parentElement) {
@@ -231,6 +235,7 @@ export function removePlayerButton(): void {
   statusEl.remove();
   button?.remove();
   button = null;
+  stopVisibilitySync();
 }
 
 // Keep the tooltip in sync when the user switches the menu language.

@@ -20,7 +20,7 @@
  * duplicates, so running them together is safe.
  */
 
-import { normalizeWhitespace } from "./utils";
+import { normalizeWhitespace } from "../core/utils";
 import {
   upsertCue,
   publishCues,

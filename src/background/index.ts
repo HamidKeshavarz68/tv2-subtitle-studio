@@ -7,20 +7,11 @@
  * translation requests through here.
  */
 
-declare const chrome: any;
-
-type TranslateRequest = {
-  type: "translate";
-  text?: unknown;
-  source?: unknown;
-  target?: unknown;
-  provider?: unknown;
-  apiKey?: unknown;
-};
-
-function isTranslateRequest(msg: unknown): msg is TranslateRequest {
-  return !!msg && typeof msg === "object" && (msg as { type?: unknown }).type === "translate";
-}
+import {
+  CUE_SEPARATOR,
+  isTranslateMessage,
+  TranslateResponse,
+} from "../shared/translation";
 
 function buildTranslateUrl(source: string, target: string, text: string): string {
   return (
@@ -41,9 +32,6 @@ function extractTranslatedText(data: unknown): string {
     return String(segment[0] ?? "");
   }).join("");
 }
-
-/** Cues are joined with this separator by the content script; keep it in sync. */
-const CUE_SEPARATOR = "\n\n@@@\n\n";
 
 /**
  * Map an app BCP-47 base target code to a DeepL target language. Returns null
@@ -129,8 +117,10 @@ async function deeplTranslate(text: string, target: string, apiKey: string): Pro
   return out.join(CUE_SEPARATOR);
 }
 
-chrome.runtime.onMessage.addListener((msg: unknown, _sender: unknown, sendResponse: (resp: any) => void) => {
-  if (!isTranslateRequest(msg)) return;
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (!isTranslateMessage(msg)) return;
+
+  const respond = (response: TranslateResponse): void => sendResponse(response);
 
   (async () => {
     try {
@@ -139,13 +129,13 @@ chrome.runtime.onMessage.addListener((msg: unknown, _sender: unknown, sendRespon
       const text = String(msg.text ?? "");
       const provider = String(msg.provider ?? "google");
       if (!target || !text) {
-        sendResponse({ ok: false, error: "missing target/text" });
+        respond({ ok: false, error: "missing target/text" });
         return;
       }
 
       if (provider === "deepl") {
         const translated = await deeplTranslate(text, target, String(msg.apiKey ?? ""));
-        sendResponse({ ok: true, text: translated });
+        respond({ ok: true, text: translated });
         return;
       }
 
@@ -156,14 +146,13 @@ chrome.runtime.onMessage.addListener((msg: unknown, _sender: unknown, sendRespon
       if (!res.ok) throw new Error("HTTP " + res.status);
 
       const data: unknown = await res.json();
-      sendResponse({ ok: true, text: extractTranslatedText(data) });
+      respond({ ok: true, text: extractTranslatedText(data) });
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
-      sendResponse({ ok: false, error: message });
+      respond({ ok: false, error: message });
     }
   })();
 
   // Keep the message channel open for the async sendResponse.
   return true;
 });
-

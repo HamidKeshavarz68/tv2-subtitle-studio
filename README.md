@@ -41,9 +41,10 @@ npm run build
 This type-checks with `tsc` and bundles the TypeScript sources with
 [esbuild](https://esbuild.github.io/) into:
 
-- `src/content/*.ts`    → `dist/content/index.js`    (runs on the TV 2 Play page)
-- `src/background/*.ts` → `dist/background/index.js` (service worker — proxies
-  Google Translate calls so the page CSP can't block them)
+- `src/content/index.ts` → `dist/content/index.js` (isolated content script)
+- `src/content/main-world/net-hook.ts` → `dist/content/net-hook.js` (player network bridge)
+- `src/background/index.ts` → `dist/background/index.js` (service worker — proxies
+  translation calls so the page CSP can't block them)
 
 Then:
 
@@ -74,8 +75,12 @@ Then:
 | **⚙ Settings** | Opens a dropdown to change menu language, translator (Google or DeepL), playback speed and font size. Choosing DeepL reveals a field to paste your API key. |
 | **Hide / Show** | Collapses the window to just the toolbar, or restores its previous size. |
 
-The settings dropdown is localised with a small built-in i18n layer (`src/content/i18n.ts`).
+The settings dropdown is localised with a small built-in i18n layer
+(`src/content/core/i18n.ts`).
 Switching the menu language re-renders every toolbar label and tooltip on the fly.
+Its size is derived automatically from the effective viewport, keeping the
+controls compact on ordinary screens and readable on high-resolution TVs without
+adding another user setting.
 The dropdown also shows the current extension version and quick links to email the
 author or open the GitHub repository for bugs, issues and suggestions.
 
@@ -253,22 +258,21 @@ tv2-subtitle-studio/
 ├── public/
 │   └── icons/                 Toolbar / web-store icons (placeholder SVG)
 └── src/
+    ├── chrome.d.ts             Minimal Chrome runtime declarations
     ├── background/
-    │   └── index.ts           Service worker — Google Translate + DeepL proxy
+    │   └── index.ts            Google Translate + DeepL service-worker proxy
     ├── content/
-    │   ├── index.ts           Entry: SPA gating + mount lifecycle
-    │   ├── config.ts          Constants, language list, shared types
-    │   ├── utils.ts           Pure helpers (strip/normalize/escape/time/storage)
-    │   ├── state.ts           Shared state + persisted settings
-    │   ├── translator.ts      Google/DeepL proxy + coalesced batch engine + fallback
-    │   ├── toast.ts           Dependency-free transient toast (e.g. DeepL fallback)
-    │   ├── native-subtitles.ts Hide/restore the player's native captions
-    │   ├── renderer.ts        Status line + rolling-window render
-    │   ├── overlay.ts         Overlay DOM, toolbar, settings menu, drag/resize, click-to-seek
-    │   ├── i18n.ts            Menu i18n (en/no) for the toolbar + settings UI
-    │   └── video.ts           Video/track discovery, attach/detach, snapshots
+    │   ├── index.ts            Composition root: SPA gating + mount lifecycle
+    │   ├── core/               Configuration, state, i18n and shared pure helpers
+    │   ├── main-world/         Page-context network bridge
+    │   ├── player/             Video discovery, lifecycle and player controls
+    │   ├── subtitles/          DOM/TTML capture, cue store and native captions
+    │   ├── translation/        Translation batching, caching and fallback
+    │   └── ui/                 Overlay, rendering and transient notifications
+    ├── shared/
+    │   └── translation.ts      Typed content ↔ service-worker message contract
     └── styles/
-        └── overlay.css        Overlay styles
+        └── overlay.css         Overlay styles
 ```
 
 Built with `npm run build` → `dist/content/index.js` and

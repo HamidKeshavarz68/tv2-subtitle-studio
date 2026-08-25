@@ -7,19 +7,21 @@
  * cues into shared state whenever they grow.
  */
 
-import { applyPlaybackRate, settings, state } from "./state";
-import { isSubtitleTrack } from "./utils";
-import { render, setStatus, updateStatus, invalidateRender } from "./renderer";
-import { onTranslationConfigChanged, stopTranslations } from "./translator";
-import { startDomSubtitleCapture, stopDomSubtitleCapture, isDomCaptureActive } from "./dom-subtitles";
-import { startTtmlCapture, stopTtmlCapture } from "./ttml-subtitles";
-import { resetSubtitleStore } from "./subtitle-store";
-import { applyNativeSubtitleVisibility } from "./native-subtitles";
-
-/** Marker so each track is hooked for cue updates only once. */
-const HOOKED = "__nsrHooked";
+import { applyPlaybackRate, settings, state } from "../core/state";
+import { isSubtitleTrack } from "../core/utils";
+import { render, setStatus, updateStatus, invalidateRender } from "../ui/renderer";
+import { onTranslationConfigChanged, stopTranslations } from "../translation/translator";
+import {
+  startDomSubtitleCapture,
+  stopDomSubtitleCapture,
+  isDomCaptureActive,
+} from "../subtitles/dom-subtitles";
+import { startTtmlCapture, stopTtmlCapture } from "../subtitles/ttml-subtitles";
+import { resetSubtitleStore } from "../subtitles/subtitle-store";
+import { applyNativeSubtitleVisibility } from "../subtitles/native-subtitles";
 
 let detach: (() => void) | null = null;
+const trackCleanups = new Map<TextTrack, () => void>();
 
 /**
  * Signature of the last snapshotted cue set. The player streams subtitles in
@@ -76,7 +78,6 @@ export function findVideo(): HTMLVideoElement | null {
       best = v;
     }
   }
-
   return best ?? list[0] ?? null;
 }
 
@@ -161,10 +162,12 @@ export function detachVideo(): void {
     detach();
     detach = null;
   }
+  clearTrackListeners();
 }
 
 export function scanTextTracks(video: HTMLVideoElement): void {
   const tracks = video.textTracks;
+  const currentTracks = new Set<TextTrack>();
   let bestTrack: TextTrack | null = null;
   let bestCount = 0;
   let anyEnabled = false;
@@ -172,6 +175,7 @@ export function scanTextTracks(video: HTMLVideoElement): void {
   for (let i = 0; i < tracks.length; i++) {
     const t = tracks[i];
     if (!isSubtitleTrack(t)) continue;
+    currentTracks.add(t);
 
     // A subtitle track the player is still feeding (the user has subtitles on).
     // When the user turns subtitles off, the player sets the track to
@@ -183,20 +187,16 @@ export function scanTextTracks(video: HTMLVideoElement): void {
     // 'hidden' would stop cue loading. Native captions are suppressed visually
     // instead (see native-subtitles.ts).
 
-    // Hook each track once.
-    if (!(t as any)[HOOKED]) {
-      (t as any)[HOOKED] = true;
-      t.addEventListener("cuechange", () => snapshotCues(t));
-      // Some players add cues asynchronously after first load.
-      t.addEventListener("load" as any, () => snapshotCues(t));
-    }
+    hookTrack(t);
 
     const count = t.cues ? t.cues.length : 0;
     if (count > bestCount) {
       bestCount = count;
       bestTrack = t;
     }
+
   }
+  pruneTrackListeners(currentTracks);
 
   if (bestTrack && bestCount > 0) {
     snapshotCues(bestTrack);
@@ -211,6 +211,32 @@ export function scanTextTracks(video: HTMLVideoElement): void {
   } else {
     setStatus(`no cues yet (${tracks.length} track${tracks.length === 1 ? "" : "s"} found)`);
   }
+}
+
+function hookTrack(track: TextTrack): void {
+  if (trackCleanups.has(track)) return;
+  const target: EventTarget = track;
+  const snapshot = () => snapshotCues(track);
+  target.addEventListener("cuechange", snapshot);
+  // Some players add cues asynchronously after first load.
+  target.addEventListener("load", snapshot);
+  trackCleanups.set(track, () => {
+    target.removeEventListener("cuechange", snapshot);
+    target.removeEventListener("load", snapshot);
+  });
+}
+
+function clearTrackListeners(): void {
+  trackCleanups.forEach((cleanup) => cleanup());
+  trackCleanups.clear();
+}
+
+function pruneTrackListeners(currentTracks: ReadonlySet<TextTrack>): void {
+  trackCleanups.forEach((cleanup, track) => {
+    if (currentTracks.has(track)) return;
+    cleanup();
+    trackCleanups.delete(track);
+  });
 }
 
 /** Reset all subtitle-derived state (used when the user disables subtitles). */
